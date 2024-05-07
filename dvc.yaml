@@ -1,0 +1,54 @@
+stages:
+  get_bdb_2024_data:
+    cmd: kaggle competitions download -c nfl-big-data-bowl-2024 -p data/
+    outs:
+    - data/nfl-big-data-bowl-2024.zip
+
+  unzip_bdb_2024_data:
+    cmd: unzip data/nfl-big-data-bowl-2024.zip -d data/bdb_2024/
+    deps:
+    - data/nfl-big-data-bowl-2024.zip
+    outs:
+    - data/bdb_2024
+
+  prep_data:
+    cmd: rye run python src/bigdatabowltransformerdemo/prep_data.py
+    deps:
+    - src/bigdatabowltransformerdemo/prep_data.py
+    - data/bdb_2024/
+    outs:
+    - data/split_prepped_data/
+
+  precompute_datasets: # this might take a few hours
+    cmd: rye run python src/bigdatabowltransformerdemo/datasets.py
+    deps:
+    - src/bigdatabowltransformerdemo/datasets.py
+    - data/split_prepped_data/
+    outs:
+    - data/datasets/
+
+  train_zoo_model:
+    cmd: [
+      rye run python src/bigdatabowltransformerdemo/train.py --model_type zoo,
+    ]
+
+    deps:
+    - src/bigdatabowltransformerdemo/train.py
+    - src/bigdatabowltransformerdemo/datasets.py
+    - src/bigdatabowltransformerdemo/models.py
+    - data/datasets/
+    outs:
+    - data/models/zoo_no_play/
+
+  train_transformer_model:
+    cmd: [
+      rye run python src/bigdatabowltransformerdemo/train.py --model_type transformer,
+    ]
+
+    deps:
+    - src/bigdatabowltransformerdemo/train.py
+    - src/bigdatabowltransformerdemo/datasets.py
+    - src/bigdatabowltransformerdemo/models.py
+    - data/datasets/
+    outs:
+    - data/models/transformer_no_play/
