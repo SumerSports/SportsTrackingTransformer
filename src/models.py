@@ -1,7 +1,7 @@
 import torch
 from lightning import LightningModule
 from torch import Tensor, nn, squeeze
-from torch.optim import Adam, AdamW
+from torch.optim import AdamW
 
 torch.set_float32_matmul_precision("medium")
 
@@ -32,7 +32,7 @@ class SumerTransformerSpacialEncoder(nn.Module):
             nn.Linear(feature_len, hidden_dim),
             nn.ReLU(),
             nn.LayerNorm(hidden_dim),
-            nn.Dropout(dropout),            
+            nn.Dropout(dropout),
         )
 
         self.transformer_encoder = nn.TransformerEncoder(
@@ -74,7 +74,13 @@ class SumerTransformerSpacialEncoder(nn.Module):
 # Zoo Model code based on:
 # https://github.com/juancamilocampos/nfl-big-data-bowl-2020/blob/master/1st_place_zoo_solution_v2.ipynb
 class ZooSpacialEncoder(nn.Module):
-    def __init__(self, feature_len: int, hidden_dim: int = 128, num_layers: int = 3, dropout: float = 0.3,):
+    def __init__(
+        self,
+        feature_len: int,
+        hidden_dim: int = 128,
+        num_layers: int = 3,
+        dropout: float = 0.3,
+    ):
         super().__init__()
         self.hyperparams = {
             "hidden_dim": hidden_dim,
@@ -114,9 +120,9 @@ class ZooSpacialEncoder(nn.Module):
             *[
                 nn.Linear(hidden_dim, hidden_dim),
                 nn.ReLU(),
-                    nn.BatchNorm1d(hidden_dim),
+                nn.BatchNorm1d(hidden_dim),
             ]
-            * max(0, num_layers // 3 -1),
+            * max(0, num_layers // 3 - 1),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.LayerNorm(hidden_dim),
@@ -129,7 +135,7 @@ class ZooSpacialEncoder(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         # x: [B: batch_size, O: offense, D: defense, F: feature_len]
         B, O, D, F = x.size()  # B=Batch, O=Offense, D=Defense, F=Feature
-        
+
         x = self.feature_norm_layer(x.permute(0, 3, 1, 2)).permute(0, 2, 3, 1)  # [B,O,D,F] -> [B,O,D,F]
         x = self.feature_embedding_layer(x)  # [B,O,D,F] -> [B,O,D,H: hidden_dim]
 

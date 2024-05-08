@@ -7,7 +7,6 @@
 #   all-features: false
 #   with-sources: false
 
--e file:.
 absl-py==2.1.0
     # via tensorboard
 aiohttp==3.9.5
@@ -37,6 +36,8 @@ attrs==23.2.0
     # via aiohttp
     # via dvc
     # via dvc-data
+    # via jsonschema
+    # via referencing
     # via sqltrie
 billiard==4.2.0
     # via celery
@@ -80,8 +81,11 @@ configobj==5.0.8
     # via dvc
 contourpy==1.2.1
     # via bokeh
+    # via matplotlib
 cryptography==42.0.5
     # via asyncssh
+cycler==0.12.1
+    # via matplotlib
 debugpy==1.8.1
     # via ipykernel
 decorator==5.1.1
@@ -102,7 +106,6 @@ dulwich==0.22.1
     # via dvc-studio-client
     # via scmrepo
 dvc==3.50.1
-    # via bigdatabowltransformerdemo
 dvc-data==3.15.1
     # via dvc
 dvc-http==2.32.0
@@ -120,6 +123,8 @@ entrypoints==0.4
     # via gto
 executing==2.0.1
     # via stack-data
+fastjsonschema==2.19.1
+    # via nbformat
 filelock==3.14.0
     # via iterative-telemetry
     # via torch
@@ -127,6 +132,8 @@ flatten-dict==0.4.2
     # via dvc
 flufl-lock==7.1.1
     # via dvc
+fonttools==4.51.0
+    # via matplotlib
 frozenlist==1.4.1
     # via aiohttp
     # via aiosignal
@@ -173,19 +180,24 @@ jedi==0.19.1
 jinja2==3.1.3
     # via bokeh
     # via torch
+jsonschema==4.22.0
+    # via nbformat
+jsonschema-specifications==2023.12.1
+    # via jsonschema
 jupyter-client==8.6.1
     # via ipykernel
 jupyter-core==5.7.2
     # via ipykernel
     # via jupyter-client
+    # via nbformat
 kaggle==1.6.12
-    # via bigdatabowltransformerdemo
+kiwisolver==1.4.5
+    # via matplotlib
 kombu==5.3.7
     # via celery
     # via dvc
     # via dvc-task
 lightning==2.2.4
-    # via bigdatabowltransformerdemo
 lightning-utilities==0.11.2
     # via lightning
     # via pytorch-lightning
@@ -202,6 +214,8 @@ markdown-it-py==3.0.0
 markupsafe==2.1.5
     # via jinja2
     # via werkzeug
+matplotlib==3.8.4
+    # via seaborn
 matplotlib-inline==0.1.7
     # via ipykernel
     # via ipython
@@ -214,6 +228,7 @@ mpmath==1.3.0
 multidict==6.0.5
     # via aiohttp
     # via yarl
+nbformat==5.10.4
 nest-asyncio==1.6.0
     # via ipykernel
 networkx==3.3
@@ -225,10 +240,12 @@ numpy==1.26.4
     # via holoviews
     # via hvplot
     # via lightning
+    # via matplotlib
     # via pandas
     # via polars
     # via pyarrow
     # via pytorch-lightning
+    # via seaborn
     # via tensorboard
     # via tensorboardx
     # via torchmetrics
@@ -274,11 +291,12 @@ packaging==24.0
     # via ipykernel
     # via lightning
     # via lightning-utilities
+    # via matplotlib
+    # via plotly
     # via pytorch-lightning
     # via tensorboardx
     # via torchmetrics
 pandarallel==1.6.5
-    # via bigdatabowltransformerdemo
 pandas==2.2.2
     # via bokeh
     # via holoviews
@@ -286,6 +304,7 @@ pandas==2.2.2
     # via pandarallel
     # via panel
     # via polars
+    # via seaborn
     # via torch-tb-profiler
 panel==1.4.2
     # via holoviews
@@ -304,11 +323,12 @@ pexpect==4.9.0
     # via ipython
 pillow==10.3.0
     # via bokeh
+    # via matplotlib
 platformdirs==3.11.0
     # via dvc
     # via jupyter-core
+plotly==5.22.0
 polars==0.20.23
-    # via bigdatabowltransformerdemo
 prompt-toolkit==3.0.43
     # via click-repl
     # via ipython
@@ -347,11 +367,13 @@ pygtrie==2.5.0
 pyparsing==3.1.2
     # via dvc
     # via grandalf
+    # via matplotlib
     # via pydot
 python-dateutil==2.9.0.post0
     # via celery
     # via jupyter-client
     # via kaggle
+    # via matplotlib
     # via pandas
 python-slugify==8.0.4
     # via kaggle
@@ -370,6 +392,9 @@ pyyaml==6.0.1
 pyzmq==26.0.3
     # via ipykernel
     # via jupyter-client
+referencing==0.35.1
+    # via jsonschema
+    # via jsonschema-specifications
 requests==2.31.0
     # via dvc
     # via dvc-studio-client
@@ -380,6 +405,9 @@ rich==13.7.1
     # via dvc
     # via gto
     # via typer
+rpds-py==0.18.1
+    # via jsonschema
+    # via referencing
 ruamel-yaml==0.18.6
     # via dvc
     # via gto
@@ -389,6 +417,7 @@ ruff==0.4.2
 scmrepo==3.3.2
     # via dvc
     # via gto
+seaborn==0.13.2
 semver==3.0.2
     # via gto
 setuptools==69.5.1
@@ -423,24 +452,22 @@ sympy==1.12
 tabulate==0.9.0
     # via dvc
     # via gto
+tenacity==8.3.0
+    # via plotly
 tensorboard==2.16.2
-    # via bigdatabowltransformerdemo
     # via torch-tb-profiler
 tensorboard-data-server==0.7.2
     # via tensorboard
 tensorboardx==2.6.2.2
-    # via bigdatabowltransformerdemo
 text-unidecode==1.3
     # via python-slugify
 tomlkit==0.12.4
     # via dvc
 torch==2.3.0
-    # via bigdatabowltransformerdemo
     # via lightning
     # via pytorch-lightning
     # via torchmetrics
 torch-tb-profiler==0.4.3
-    # via bigdatabowltransformerdemo
 torchmetrics==1.3.2
     # via lightning
     # via pytorch-lightning
@@ -449,7 +476,6 @@ tornado==6.4
     # via ipykernel
     # via jupyter-client
 tqdm==4.66.3
-    # via bigdatabowltransformerdemo
     # via dvc
     # via dvc-data
     # via fsspec
@@ -465,6 +491,7 @@ traitlets==5.14.3
     # via jupyter-client
     # via jupyter-core
     # via matplotlib-inline
+    # via nbformat
 typer==0.12.3
     # via gto
 typing-extensions==4.11.0

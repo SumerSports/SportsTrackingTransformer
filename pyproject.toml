@@ -1,9 +1,10 @@
 [project]
 name = "bigdatabowltransformerdemo"
 version = "0.1.0"
-description = "Add your description here"
+description = "Demoing a generalizable model architecture for sports spacial data"
 authors = [
-    { name = "Udit Ranasaria", email = "udit.ranasaria@sumersports.com" }
+    { name = "Udit Ranasaria", email = "udit.ranasaria@sumersports.com" },
+    { name = "Pavel Vabishchevich", email = "pavel.vabishchevich@sumersports.com" },
 ]
 dependencies = [
     "torch>=2.3.0",
@@ -16,6 +17,8 @@ dependencies = [
     "pandarallel>=1.6.5",
     "tensorboardx>=2.6.2.2",
     "torch-tb-profiler>=0.4.3",
+    "seaborn>=0.13.2",
+    "plotly>=5.22.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
@@ -29,17 +32,19 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
+virtual = true
 dev-dependencies = [
     "ruff>=0.4.2",
     "uv>=0.1.39",
     "ipykernel>=6.29.4",
+    "nbformat>=5.10.4",
 ]
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/bigdatabowltransformerdemo"]
+packages = ["src"]
 
 [tool.ruff]
 line-length = 120

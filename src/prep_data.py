@@ -16,7 +16,13 @@ def get_players_df() -> pl.DataFrame:
 
 
 def get_plays_df() -> pl.DataFrame:
-    return pl.read_csv(INPUT_DATA_DIR / "plays.csv", null_values=["NA", "nan", "N/A", "NaN", ""])
+    return pl.read_csv(INPUT_DATA_DIR / "plays.csv", null_values=["NA", "nan", "N/A", "NaN", ""]).with_columns(
+        distanceToGoal=(
+            pl.when(pl.col("possessionTeam") == pl.col("yardlineSide"))
+            .then(100 - pl.col("yardlineNumber"))
+            .otherwise(pl.col("yardlineNumber"))
+        )
+    )
 
 
 def get_tracking_df() -> pl.DataFrame:
@@ -36,7 +42,7 @@ def add_features_to_tracking_df(
     tracking_df = (
         tracking_df.join(
             plays_df.select(
-                ["gameId", "playId", "ballCarrierId", "possessionTeam", "down", "yardsToGo", "absoluteYardlineNumber"]
+                ["gameId", "playId", "ballCarrierId", "possessionTeam", "down", "yardsToGo", "distanceToGoal"]
             ),
             on=["gameId", "playId"],
             how="inner",
@@ -123,7 +129,23 @@ def get_tackle_loc_target_df(tracking_df: pl.DataFrame) -> pl.DataFrame:
         .filter(pl.col("event").is_in(TACKLE_EVENT_ENUM.keys()) & (pl.col("is_ball_carrier") == 1))
         .group_by(["gameId", "playId", "mirrored"])
         .tail(1)
-        .select(["gameId", "playId", "mirrored", "nflId", "displayName", "frameId", "event", "x", "y", "x_rel", "y_rel"])
+        .select(
+            [
+                "gameId",
+                "playId",
+                "mirrored",
+                "nflId",
+                "displayName",
+                "frameId",
+                "event",
+                "x",
+                "y",
+                "x_rel",
+                "y_rel",
+                "play_origin_x",
+                "play_origin_y",
+            ]
+        )
         .rename(
             {
                 "nflId": "ballCarrierNflId",
@@ -155,7 +177,7 @@ def get_tackle_loc_target_df(tracking_df: pl.DataFrame) -> pl.DataFrame:
 def split_train_test_val(tracking_df: pl.DataFrame, target_df: pl.DataFrame) -> Dict[str, pl.DataFrame]:
     tracking_df = tracking_df.sort(["gameId", "playId", "mirrored", "frameId"])
     target_df = target_df.sort(["gameId", "playId", "mirrored"])
-    
+
     print(
         f"Test set: {tracking_df.n_unique(['gameId', 'playId', 'mirrored'])} plays,",
         f"{tracking_df.n_unique(['gameId', 'playId', 'mirrored', "frameId"])} frames",
@@ -194,6 +216,7 @@ def split_train_test_val(tracking_df: pl.DataFrame, target_df: pl.DataFrame) -> 
         "val_targets": val_tgt_df,
     }
 
+
 def add_relative_positions(tracking_df: pl.DataFrame) -> pl.DataFrame:
     return (
         tracking_df.sort("frameId")
@@ -201,14 +224,21 @@ def add_relative_positions(tracking_df: pl.DataFrame) -> pl.DataFrame:
         # use ball-carrier position at first frame as "origin" for relative positions
         # this should make each frame's feature look more standardized to a model too
         .with_columns(
-            play_origin_x = pl.col("x").filter(pl.col("is_ball_carrier") == 1).first().over(["gameId", "playId", "mirrored"]),
-            play_origin_y = pl.col("y").filter(pl.col("is_ball_carrier") == 1).first().over(["gameId", "playId", "mirrored"]),
+            play_origin_x=pl.col("x")
+            .filter(pl.col("is_ball_carrier") == 1)
+            .first()
+            .over(["gameId", "playId", "mirrored"]),
+            play_origin_y=pl.col("y")
+            .filter(pl.col("is_ball_carrier") == 1)
+            .first()
+            .over(["gameId", "playId", "mirrored"]),
         )
         .with_columns(
-            x_rel = pl.col("x") - pl.col("play_origin_x"),
-            y_rel = pl.col("y") - pl.col("play_origin_y"),
+            x_rel=pl.col("x") - pl.col("play_origin_x"),
+            y_rel=pl.col("y") - pl.col("play_origin_y"),
         )
     )
+
 
 def main():
     players_df = get_players_df()

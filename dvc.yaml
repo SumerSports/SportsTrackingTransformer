@@ -12,43 +12,69 @@ stages:
     - data/bdb_2024
 
   prep_data:
-    cmd: rye run python src/bigdatabowltransformerdemo/prep_data.py
+    cmd: rye run python src/prep_data.py
     deps:
-    - src/bigdatabowltransformerdemo/prep_data.py
+    - src/prep_data.py
     - data/bdb_2024/
     outs:
     - data/split_prepped_data/
 
-  precompute_datasets: # this might take a few hours
-    cmd: rye run python src/bigdatabowltransformerdemo/datasets.py
+  precompute_datasets: # this might take a couple hours
+    cmd: rye run python src/datasets.py
     deps:
-    - src/bigdatabowltransformerdemo/datasets.py
+    - src/datasets.py
     - data/split_prepped_data/
     outs:
     - data/datasets/
 
   train_zoo_model:
     cmd: [
-      rye run python src/bigdatabowltransformerdemo/train.py --model_type zoo,
+      rye run python src/train.py --model_type zoo,
     ]
 
     deps:
-    - src/bigdatabowltransformerdemo/train.py
-    - src/bigdatabowltransformerdemo/datasets.py
-    - src/bigdatabowltransformerdemo/models.py
-    - data/datasets/
+    - src/train.py
+    - src/datasets.py
+    - src/models.py
+    - data/datasets/zoo/
     outs:
-    - data/models/zoo_no_play/
+    - data/models/zoo/
 
   train_transformer_model:
     cmd: [
-      rye run python src/bigdatabowltransformerdemo/train.py --model_type transformer,
+      rye run python src/train.py --model_type transformer,
     ]
 
     deps:
-    - src/bigdatabowltransformerdemo/train.py
-    - src/bigdatabowltransformerdemo/datasets.py
-    - src/bigdatabowltransformerdemo/models.py
-    - data/datasets/
+    - src/train.py
+    - src/datasets.py
+    - src/models.py
+    - data/datasets/transformer
     outs:
-    - data/models/transformer_no_play/
+    - data/models/transformer/
+
+  train_zoo_model_with_play:
+    cmd: [
+      rye run python src/train.py --model_type zoo --play_features=True,
+    ]
+
+    deps:
+    - src/train.py
+    - src/datasets.py
+    - src/models.py
+    - data/datasets/zoo_play/
+    outs:
+    - data/models/zoo_play/
+
+  train_transformer_model_with_play:
+    cmd: [
+      rye run python src/train.py --model_type transformer --play_features=True,
+    ]
+
+    deps:
+    - src/train.py
+    - src/datasets.py
+    - src/models.py
+    - data/datasets/transformer_play/
+    outs:
+    - data/models/transformer_play/

@@ -73,7 +73,7 @@ class BDB2024_Dataset(Dataset):
         features = ["x_rel", "y_rel", "sx", "sy", "side", "is_ball_carrier"]
 
         if self.include_play_features:
-            features += ["down", "yardsToGo", "absoluteYardlineNumber"]
+            features += ["down", "yardsToGo", "distanceToGoal"]
 
         x = frame_df[features].to_numpy(dtype=np.float32)
         assert x.shape == (22, len(features))
@@ -88,7 +88,7 @@ class BDB2024_Dataset(Dataset):
         ball_carr_mvmt_feats = ball_carrier[["x_rel", "y_rel", "sx", "sy"]].to_numpy(dtype=np.float32).squeeze()
         off_mvmt_feats = off_plyrs[["x_rel", "y_rel", "sx", "sy"]].to_numpy(dtype=np.float32)
         def_mvmt_feats = def_plyrs[["x_rel", "y_rel", "sx", "sy"]].to_numpy(dtype=np.float32)
-        play_feats = frame_df[["down", "yardsToGo", "absoluteYardlineNumber"]].to_numpy(dtype=np.float32)[0].squeeze()
+        play_feats = frame_df[["down", "yardsToGo", "distanceToGoal"]].to_numpy(dtype=np.float32)[0].squeeze()
 
         # features
         x = [
@@ -116,6 +116,7 @@ class BDB2024_Dataset(Dataset):
         assert x.shape == (10, 11, 13 if self.include_play_features else 10)
         return x
 
+
 def main():
     PREPPED_DATA_DIR = Path("data/split_prepped_data/")
     DATASET_DIR = Path("data/datasets/")
@@ -124,11 +125,11 @@ def main():
             feature_df = pl.read_parquet(PREPPED_DATA_DIR / f"{split}_features.parquet")
             tgt_df = pl.read_parquet(PREPPED_DATA_DIR / f"{split}_targets.parquet")
             for model_type in ["zoo", "transformer"]:
-                print(f"Creating {model_type} {split} {'play' if play_features else 'no_play'} dataset...")
+                print(f"Creating {model_type} {split} {'play' if play_features else ''} dataset...")
                 tic = time.time()
                 dataset = BDB2024_Dataset(model_type, feature_df, tgt_df, include_play_features=play_features)
                 print(f"Took {(time.time() - tic)/60:.1f} mins")
-                out_dir = DATASET_DIR / f"{model_type}_{'play' if play_features else 'no_play'}"
+                out_dir = DATASET_DIR / f"{model_type}{'_play' if play_features else ''}"
                 out_dir.mkdir(exist_ok=True, parents=True)
                 with open(out_dir / f"{split}_dataset.pkl", "wb") as f:
                     pickle.dump(dataset, f)
