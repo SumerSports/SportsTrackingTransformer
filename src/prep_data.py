@@ -42,7 +42,16 @@ def add_features_to_tracking_df(
     tracking_df = (
         tracking_df.join(
             plays_df.select(
-                ["gameId", "playId", "ballCarrierId", "possessionTeam", "down", "yardsToGo", "distanceToGoal"]
+                [
+                    "gameId",
+                    "playId",
+                    "ballCarrierId",
+                    "possessionTeam",
+                    "down",
+                    "yardsToGo",
+                    "distanceToGoal",
+                    "playResult",
+                ]
             ),
             on=["gameId", "playId"],
             how="inner",
@@ -72,10 +81,10 @@ def convert_tracking_to_cartesian(tracking_df: pl.DataFrame) -> pl.DataFrame:
             dir=((pl.col("dir") - 90) * -1) % 360,
             o=((pl.col("o") - 90) * -1) % 360,
         )
-        # convert polar vectors to cartesian ((s, dir) -> (sx, sy), (o) -> (ox, oy))
+        # convert polar vectors to cartesian ((s, dir) -> (vx, vy), (o) -> (ox, oy))
         .with_columns(
-            sx=pl.col("s") * pl.col("dir").radians().cos(),
-            sy=pl.col("s") * pl.col("dir").radians().sin(),
+            vx=pl.col("s") * pl.col("dir").radians().cos(),
+            vy=pl.col("s") * pl.col("dir").radians().sin(),
             ox=pl.col("o").radians().cos(),
             oy=pl.col("o").radians().sin(),
         )
@@ -86,8 +95,8 @@ def standardize_tracking_directions(tracking_df: pl.DataFrame) -> pl.DataFrame:
     return tracking_df.with_columns(
         x=pl.when(pl.col("playDirection") == "right").then(pl.col("x")).otherwise(120 - pl.col("x")),
         y=pl.when(pl.col("playDirection") == "right").then(pl.col("y")).otherwise(53.3 - pl.col("y")),
-        sx=pl.when(pl.col("playDirection") == "right").then(pl.col("sx")).otherwise(-1 * pl.col("sx")),
-        sy=pl.when(pl.col("playDirection") == "right").then(pl.col("sy")).otherwise(-1 * pl.col("sy")),
+        vx=pl.when(pl.col("playDirection") == "right").then(pl.col("vx")).otherwise(-1 * pl.col("vx")),
+        vy=pl.when(pl.col("playDirection") == "right").then(pl.col("vy")).otherwise(-1 * pl.col("vy")),
         ox=pl.when(pl.col("playDirection") == "right").then(pl.col("ox")).otherwise(-1 * pl.col("ox")),
         oy=pl.when(pl.col("playDirection") == "right").then(pl.col("oy")).otherwise(-1 * pl.col("oy")),
     ).drop("playDirection")
@@ -103,7 +112,7 @@ def augment_mirror_tracking(tracking_df: pl.DataFrame) -> pl.DataFrame:
     mirrored_tracking_df = tracking_df.clone().with_columns(
         # only flip y values
         y=53.3 - pl.col("y"),
-        sy=-1 * pl.col("sy"),
+        vy=-1 * pl.col("vy"),
         oy=-1 * pl.col("oy"),
         mirrored=pl.lit(True),
     )
@@ -144,6 +153,7 @@ def get_tackle_loc_target_df(tracking_df: pl.DataFrame) -> pl.DataFrame:
                 "y_rel",
                 "play_origin_x",
                 "play_origin_y",
+                "playResult",
             ]
         )
         .rename(
@@ -170,7 +180,6 @@ def get_tackle_loc_target_df(tracking_df: pl.DataFrame) -> pl.DataFrame:
     )
     new_play_count = len(tracking_df.select(["gameId", "playId"]).unique())
     print(f"Lost {(og_play_count - new_play_count)/og_play_count:.3%} plays when joining with tackle_loc_df")
-
     return tackle_loc_df, tracking_df
 
 
@@ -179,7 +188,7 @@ def split_train_test_val(tracking_df: pl.DataFrame, target_df: pl.DataFrame) -> 
     target_df = target_df.sort(["gameId", "playId", "mirrored"])
 
     print(
-        f"Test set: {tracking_df.n_unique(['gameId', 'playId', 'mirrored'])} plays,",
+        f"Total set: {tracking_df.n_unique(['gameId', 'playId', 'mirrored'])} plays,",
         f"{tracking_df.n_unique(['gameId', 'playId', 'mirrored', "frameId"])} frames",
     )
 
@@ -251,6 +260,10 @@ def main():
     tracking_df = augment_mirror_tracking(tracking_df)
     tracking_df = add_relative_positions(tracking_df)
 
+    # trim margin frames where ball-carrier is unlikely to have ball (noisy)
+    tracking_df = tracking_df.filter(pl.col("frameId") > 5).filter(
+        pl.col("frameId") <= (pl.col("frameId").max().over(["gameId", "playId", "mirrored"]) - 4)
+    )
     tkl_loc_tgt_df, tracking_df = get_tackle_loc_target_df(tracking_df)
 
     split_dfs = split_train_test_val(tracking_df, tkl_loc_tgt_df)

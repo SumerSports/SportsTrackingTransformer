@@ -1,0 +1,138 @@
+schema: '2.0'
+stages:
+  get_bdb_2024_data:
+    cmd: kaggle competitions download -c nfl-big-data-bowl-2024 -p data/
+    outs:
+    - path: data/nfl-big-data-bowl-2024.zip
+      hash: md5
+      md5: d39d15812f2c6aa9450eaef71f71e601
+      size: 292799779
+  unzip_bdb_2024_data:
+    cmd: unzip data/nfl-big-data-bowl-2024.zip -d data/bdb_2024/
+    deps:
+    - path: data/nfl-big-data-bowl-2024.zip
+      hash: md5
+      md5: d39d15812f2c6aa9450eaef71f71e601
+      size: 292799779
+    outs:
+    - path: data/bdb_2024
+      hash: md5
+      md5: c7869f4305b74f791c1de31cdee7982d.dir
+      size: 1611304510
+      nfiles: 13
+  prep_data:
+    cmd: rye run python src/prep_data.py
+    deps:
+    - path: data/bdb_2024/
+      hash: md5
+      md5: c7869f4305b74f791c1de31cdee7982d.dir
+      size: 1611304510
+      nfiles: 13
+    - path: src/prep_data.py
+      hash: md5
+      md5: 3817ee4c9ee63c10d5a6d8b7dfaec5b9
+      size: 10668
+    outs:
+    - path: data/split_prepped_data/
+      hash: md5
+      md5: 01e3f324290aa4e90854dc25b0bd1eae.dir
+      size: 877418035
+      nfiles: 6
+  precompute_datasets:
+    cmd: rye run python src/datasets.py
+    deps:
+    - path: data/split_prepped_data/
+      hash: md5
+      md5: 01e3f324290aa4e90854dc25b0bd1eae.dir
+      size: 877418035
+      nfiles: 6
+    - path: src/datasets.py
+      hash: md5
+      md5: 908b51eed4bd744a2ff4da0afac59de5
+      size: 6782
+    outs:
+    - path: data/datasets/transformer/
+      hash: md5
+      md5: ff8b7cade9a3641e0adf21d09353234f.dir
+      size: 5495617760
+      nfiles: 3
+    - path: data/datasets/zoo/
+      hash: md5
+      md5: 9a8383e78b016c6e5d0003821d1ea440.dir
+      size: 8729346073
+      nfiles: 3
+  precompute_datasets_with_play:
+    cmd: rye run python src/datasets.py --play_features
+    deps:
+    - path: data/split_prepped_data/
+      hash: md5
+      md5: 01e3f324290aa4e90854dc25b0bd1eae.dir
+      size: 877418035
+      nfiles: 6
+    - path: src/datasets.py
+      hash: md5
+      md5: 908b51eed4bd744a2ff4da0afac59de5
+      size: 6782
+    outs:
+    - path: data/datasets/transformer_play/
+      hash: md5
+      md5: 60cc5588fac75c9992eb023616eb91f4.dir
+      size: 5715986348
+      nfiles: 3
+    - path: data/datasets/zoo_play/
+      hash: md5
+      md5: 00923c185c5f840cfee299e9af09150f.dir
+      size: 9831161761
+      nfiles: 3
+  train_transformer_models:
+    cmd: rye run python src/train.py --model_type transformer
+    deps:
+    - path: data/datasets/transformer
+      hash: md5
+      md5: ff8b7cade9a3641e0adf21d09353234f.dir
+      size: 5495617760
+      nfiles: 3
+    - path: src/datasets.py
+      hash: md5
+      md5: 908b51eed4bd744a2ff4da0afac59de5
+      size: 6782
+    - path: src/models.py
+      hash: md5
+      md5: 2f01fe84ddcf118f5b3574439b6de732
+      size: 8064
+    - path: src/train.py
+      hash: md5
+      md5: 9c88efde2a70d0096e6117a92bfa09d5
+      size: 7001
+    outs:
+    - path: data/models/transformer/
+      hash: md5
+      md5: ce4519b2566f249e2fcdcd13ead05026.dir
+      size: 415185916
+      nfiles: 24
+  train_zoo_models:
+    cmd: rye run python src/train.py --model_type zoo
+    deps:
+    - path: data/datasets/zoo/
+      hash: md5
+      md5: 9a8383e78b016c6e5d0003821d1ea440.dir
+      size: 8729346073
+      nfiles: 3
+    - path: src/datasets.py
+      hash: md5
+      md5: 908b51eed4bd744a2ff4da0afac59de5
+      size: 6782
+    - path: src/models.py
+      hash: md5
+      md5: 2f01fe84ddcf118f5b3574439b6de732
+      size: 8064
+    - path: src/train.py
+      hash: md5
+      md5: 9c88efde2a70d0096e6117a92bfa09d5
+      size: 7001
+    outs:
+    - path: data/models/zoo/
+      hash: md5
+      md5: 6b0cd62e12a696917b4bd80d4aefe109.dir
+      size: 192697818
+      nfiles: 24

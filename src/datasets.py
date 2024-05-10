@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import pickle
 import time
+from argparse import ArgumentParser
 from pathlib import Path
 from typing import Tuple
 
@@ -70,7 +71,7 @@ class BDB2024_Dataset(Dataset):
         return y
 
     def transformer_transform_input_frame_df(self, frame_df: pd.DataFrame) -> np.ndarray:
-        features = ["x_rel", "y_rel", "sx", "sy", "side", "is_ball_carrier"]
+        features = ["x_rel", "y_rel", "vx", "vy", "side", "is_ball_carrier"]
 
         if self.include_play_features:
             features += ["down", "yardsToGo", "distanceToGoal"]
@@ -85,22 +86,22 @@ class BDB2024_Dataset(Dataset):
         off_plyrs = frame_df[(frame_df["side"] == 1) & (frame_df["is_ball_carrier"] == 0)]
         def_plyrs = frame_df[frame_df["side"] == -1]
 
-        ball_carr_mvmt_feats = ball_carrier[["x_rel", "y_rel", "sx", "sy"]].to_numpy(dtype=np.float32).squeeze()
-        off_mvmt_feats = off_plyrs[["x_rel", "y_rel", "sx", "sy"]].to_numpy(dtype=np.float32)
-        def_mvmt_feats = def_plyrs[["x_rel", "y_rel", "sx", "sy"]].to_numpy(dtype=np.float32)
+        ball_carr_mvmt_feats = ball_carrier[["x_rel", "y_rel", "vx", "vy"]].to_numpy(dtype=np.float32).squeeze()
+        off_mvmt_feats = off_plyrs[["x_rel", "y_rel", "vx", "vy"]].to_numpy(dtype=np.float32)
+        def_mvmt_feats = def_plyrs[["x_rel", "y_rel", "vx", "vy"]].to_numpy(dtype=np.float32)
         play_feats = frame_df[["down", "yardsToGo", "distanceToGoal"]].to_numpy(dtype=np.float32)[0].squeeze()
 
         # features
         x = [
-            # def_sx, def_sy
+            # def_vx, def_sy
             np.tile(def_mvmt_feats[:, 2:], (10, 1, 1)),
             # def_x - ball_x, def_y - ball_y
             np.tile(def_mvmt_feats[None, :, :2] - ball_carr_mvmt_feats[None, None, :2], (10, 1, 1)),
-            # def_sx - ball_sx, def_sy - ball_sy
+            # def_vx - ball_vx, def_sy - ball_sy
             np.tile(def_mvmt_feats[None, :, 2:] - ball_carr_mvmt_feats[None, None, 2:], (10, 1, 1)),
             # off_x - def_x, off_y - def_y
             off_mvmt_feats[:, None, :2] - def_mvmt_feats[None, :, :2],
-            # off_sx - def_sx, off_sy - def_sy
+            # off_vx - def_vx, off_sy - def_sy
             off_mvmt_feats[:, None, 2:] - def_mvmt_feats[None, :, 2:],
         ]
 
@@ -117,23 +118,40 @@ class BDB2024_Dataset(Dataset):
         return x
 
 
-def main():
+def load_datasets(model_type: str, use_play_features: bool, split: str) -> BDB2024_Dataset:
+    ds_dir = Path("data/datasets") / f"{model_type}{'_play' if use_play_features else ''}"
+    if "train" in split:
+        with open(ds_dir / "train_dataset.pkl", "rb") as f:
+            return pickle.load(f)
+    elif "val" in split:
+        with open(ds_dir / "val_dataset.pkl", "rb") as f:
+            return pickle.load(f)
+    elif "test" in split:
+        with open(ds_dir / "test_dataset.pkl", "rb") as f:
+            return pickle.load(f)
+    else:
+        raise ValueError(f"Unknown split: {split}")
+
+
+def main(args):
     PREPPED_DATA_DIR = Path("data/split_prepped_data/")
     DATASET_DIR = Path("data/datasets/")
-    for play_features in [False, True]:
-        for split in ["test", "val", "train"]:
-            feature_df = pl.read_parquet(PREPPED_DATA_DIR / f"{split}_features.parquet")
-            tgt_df = pl.read_parquet(PREPPED_DATA_DIR / f"{split}_targets.parquet")
-            for model_type in ["zoo", "transformer"]:
-                print(f"Creating {model_type} {split} {'play' if play_features else ''} dataset...")
-                tic = time.time()
-                dataset = BDB2024_Dataset(model_type, feature_df, tgt_df, include_play_features=play_features)
-                print(f"Took {(time.time() - tic)/60:.1f} mins")
-                out_dir = DATASET_DIR / f"{model_type}{'_play' if play_features else ''}"
-                out_dir.mkdir(exist_ok=True, parents=True)
-                with open(out_dir / f"{split}_dataset.pkl", "wb") as f:
-                    pickle.dump(dataset, f)
+    for split in ["test", "val", "train"]:
+        feature_df = pl.read_parquet(PREPPED_DATA_DIR / f"{split}_features.parquet")
+        tgt_df = pl.read_parquet(PREPPED_DATA_DIR / f"{split}_targets.parquet")
+        for model_type in ["zoo", "transformer"]:
+            print(f"Creating {model_type} {split} {'play' if args.play_features else ''} dataset...")
+            tic = time.time()
+            dataset = BDB2024_Dataset(model_type, feature_df, tgt_df, include_play_features=args.play_features)
+            out_dir = DATASET_DIR / f"{model_type}{'_play' if args.play_features else ''}"
+            out_dir.mkdir(exist_ok=True, parents=True)
+            with open(out_dir / f"{split}_dataset.pkl", "wb") as f:
+                pickle.dump(dataset, f)
+            print(f"Took {(time.time() - tic)/60:.1f} mins")
 
 
 if __name__ == "__main__":
-    main()
+    parser = ArgumentParser()
+    parser.add_argument("--play_features", action="store_true")
+    args = parser.parse_args()
+    main(args)

@@ -10,4 +10,10 @@ curl -sSf https://rye-up.com/get | bash
 ```
 Follow instructions to add `rye` to your path and open a new terminal.
 
-After cloning the repo, use the command `rye sync`. This will create a `.venv` 
+After cloning the repo, use the command `rye sync`. This will create a `.venv` and populate it with the needed dependencies.
+If you want to activate the venv, you can do `. .venv/bin/activate` else just use `rye run` to ensure a command runs in the venv
+
+You will need to use `az login` or manual `config.local` and then `dvc pull dvc.yaml:pick_best_models` to grab the latest run.
+If you want to skip this, you can also just use `rye run dvc repro` to kick off the pipeline from scratch.
+
+The notebook `results_analysis` has some viz and results.

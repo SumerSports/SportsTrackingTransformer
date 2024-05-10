@@ -1,31 +1,42 @@
-import pickle
 from argparse import ArgumentParser
+from itertools import product
 from pathlib import Path
-from typing import Dict
 
 import lightning.pytorch.callbacks as callbacks
 import numpy as np
 import polars as pl
 import torch
-from datasets import BDB2024_Dataset
+from datasets import BDB2024_Dataset, load_datasets
 from lightning.pytorch import Trainer
 from lightning.pytorch.loggers import TensorBoardLogger
 from models import LitModel
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
-DATASET_DIR = Path("data/datasets")
 MODELS_PATH = Path("data/models")
 MODELS_PATH.mkdir(exist_ok=True)
 
 
-def predict_model_as_df(
-    model: LitModel,
-    dataloaders: Dict[str, DataLoader],
-    ckpt_path=None,
-) -> pl.DataFrame:
+def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None) -> pl.DataFrame:
+    """
+    Have to provide one of model or ckpt_path
+    """
+    if model is None:
+        model = LitModel.load_from_checkpoint(ckpt_path)
+
+    train_ds: BDB2024_Dataset = load_datasets(model.model_type, model.use_play_features, split="train")
+    val_ds: BDB2024_Dataset = load_datasets(model.model_type, model.use_play_features, split="val")
+    test_ds: BDB2024_Dataset = load_datasets(model.model_type, model.use_play_features, split="test")
+    # Recreate unshuffled dataloaders for prediction
+    dataloaders = {
+        "train": DataLoader(train_ds, batch_size=1024, shuffle=False, num_workers=10),
+        "val": DataLoader(val_ds, batch_size=1024, shuffle=False, num_workers=10),
+        "test": DataLoader(test_ds, batch_size=1024, shuffle=False, num_workers=10),
+    }
     pred_dfs = []
     for split, dataloader in dataloaders.items():
-        preds = Trainer(devices=1, logger=False).predict(model, dataloaders=dataloader, ckpt_path=ckpt_path)
+        pred_trainer = Trainer(devices=1, logger=False, enable_model_summary=False)
+        preds = pred_trainer.predict(model, dataloaders=dataloader, ckpt_path=ckpt_path)
         preds: np.ndarray = torch.concat(preds, dim=0).cpu().numpy()
 
         dataset: BDB2024_Dataset = dataloader.dataset
@@ -34,30 +45,39 @@ def predict_model_as_df(
 
         assert preds.shape[0] == ds_keys.shape[0], f"Pred Shape: {preds.shape}, Keys Shape: {ds_keys.shape}"
 
-        pred_df = (
+        pred_df = tgt_df.join(
             pl.DataFrame(
                 {
                     "gameId": ds_keys[:, 0],
                     "playId": ds_keys[:, 1],
                     "mirrored": ds_keys[:, 2],
                     "frameId": ds_keys[:, 3],
+                    "dataset_split": split,
                     "tackle_x_rel_pred": preds[:, 0].round(2),
                     "tackle_y_rel_pred": preds[:, 1].round(2),
-                }
-            )
-            .with_columns(
-                pl.col("mirrored").cast(bool),
-                pl.lit(split).alias("dataset_split"),
-            )
-            .join(tgt_df, on=["gameId", "playId", "mirrored"], how="inner")
+                },
+                schema_overrides={"mirrored": bool},
+            ),
+            on=["gameId", "playId", "mirrored"],
+            how="inner",
+        ).with_columns(
+            tackle_x_rel_pred=pl.col("tackle_x_rel_pred").round(1),
+            tackle_y_rel_pred=pl.col("tackle_y_rel_pred").round(1),
+            tackle_x_pred=(pl.col("tackle_x_rel_pred") + pl.col("play_origin_x")).round(1),
+            tackle_y_pred=(pl.col("tackle_y_rel_pred") + pl.col("play_origin_y")).round(1),
+            model_type=pl.lit(model.model_type),
+            used_play_features=model.hparams["use_play_features"],
+            batch_size=model.hparams["batch_size"],
+            hidden_dim=model.hparams["hidden_dim"],
+            num_layers=model.hparams["num_layers"],
+            dropout=model.hparams["dropout"],
+            learning_rate=model.hparams["learning_rate"],
         )
 
         assert pred_df.shape[0] == len(dataset)
-
         pred_dfs.append(pred_df)
 
-    pred_dfs = pl.concat(pred_dfs, how="vertical")
-    return pred_dfs
+    return pl.concat(pred_dfs, how="vertical")
 
 
 def train_model(
@@ -71,27 +91,22 @@ def train_model(
     device=0,
     dbg_run=False,
 ):
-    # load datasets
-    ds_dir = DATASET_DIR / f"{model_type}{'_play' if use_play_features else ''}"
-    with open(ds_dir / "train_dataset.pkl", "rb") as f:
-        train_ds: BDB2024_Dataset = pickle.load(f)
-    with open(ds_dir / "val_dataset.pkl", "rb") as f:
-        val_ds: BDB2024_Dataset = pickle.load(f)
-    with open(ds_dir / "test_dataset.pkl", "rb") as f:
-        test_ds: BDB2024_Dataset = pickle.load(f)
-    # convert to dataloaders for model fit
-    train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=30)
-    val_dataloader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=30)
+    train_ds: BDB2024_Dataset = load_datasets(model_type, use_play_features, split="test")
+    val_ds: BDB2024_Dataset = load_datasets(model_type, use_play_features, split="val")
 
-    feature_len = train_ds[0][0].shape[-1]
+    # convert to dataloaders for model fit
+    train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=100)
+    val_dataloader = DataLoader(val_ds, batch_size=1024, shuffle=False, pin_memory=True, num_workers=30)
+
+    # feature_len = train_ds[0][0].shape[-1]
     lit_model = LitModel(
         model_type,
-        feature_len=feature_len,
         batch_size=batch_size,
         hidden_dim=hidden_dim,
         num_layers=num_layers,
         learning_rate=learning_rate,
         dropout=dropout,
+        use_play_features=use_play_features,
     )
 
     devices = [device] if device >= 0 else "auto"  # if device is specified, use it, otherwise find 1 available GPU
@@ -113,20 +128,20 @@ def train_model(
         name=f"{model_type}{'_play' if use_play_features else ''}",
         log_graph=False,
         default_hp_metric=False,
-        version=f"H{hidden_dim}_L{num_layers}",
+        version=f"B{batch_size}_H{hidden_dim}_L{num_layers}_LR{learning_rate:.0e}_D{dropout}",
     )
     trainer = Trainer(
-        max_epochs=1000,
+        max_epochs=100,
         accelerator="gpu",
         profiler=None,
         logger=logger,
         devices=devices,
-        # strategy="ddp_find_unused_parameters_true",
-        enable_model_summary=False,
+        sync_batchnorm=True,
+        enable_model_summary=True,
         callbacks=[
-            callbacks.EarlyStopping(monitor="val_loss", patience=5),
-            callbacks.ModelCheckpoint(monitor="val_loss", save_top_k=1, filename="{epoch}-{val_loss:.1f}"),
-            callbacks.ModelSummary(max_depth=3),
+            callbacks.EarlyStopping(monitor="val_loss", patience=10),
+            callbacks.ModelCheckpoint(monitor="val_loss", save_top_k=1, filename="{epoch}-{val_loss:.3f}"),
+            callbacks.ModelSummary(max_depth=2),
         ],
     )
 
@@ -134,34 +149,35 @@ def train_model(
     logger.log_hyperparams(lit_model.get_hyperparams())
     trainer.fit(lit_model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
 
-    # Model Predict
-    # Recreate unshuffled dataloaders for prediction
-    pred_dataloaders = {
-        "train": DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=30),
-        "val": DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=10),
-        "test": DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=10),
-    }
-    best_model_path = trainer.checkpoint_callback.best_model_path
-    model_pred_df = predict_model_as_df(lit_model, dataloaders=pred_dataloaders, ckpt_path=best_model_path)
-    model_pred_df.write_parquet(Path(best_model_path).parent.parent / "model_preds.parquet")
+    # record best model preds
+    best_ckpt_path = Path(trainer.checkpoint_callback.best_model_path)
+    preds_df = predict_model_as_df(lit_model, best_ckpt_path)
+    preds_df.write_parquet(best_ckpt_path.with_suffix(".results.parquet"))
 
     return lit_model
 
 
 def main(args):
-    lr = 1e-04
-    for hidden_dim in [16, 32, 64, 128]:
-        for num_layers in [1, 2, 4, 8]:
-            train_model(
-                args.model_type,
-                args.batch_size,
-                hidden_dim,
-                num_layers,
-                lr,
-                dropout=0.3,
-                use_play_features=args.play_features,
-                device=args.device,
-            )
+    batch_sizes = [32]
+    lrs = [1e-4]
+    hidden_dims = [256, 128, 64]
+    num_layers = [2, 4, 8]
+
+    # create gridsearch iterable
+    gridsearch = product(batch_sizes, lrs, hidden_dims, num_layers)
+    gridsearch_len = len(batch_sizes) * len(lrs) * len(hidden_dims) * len(num_layers)
+
+    for B, LR, H, L in tqdm(gridsearch, desc="Hyperparam Gridsearch", total=gridsearch_len):
+        train_model(
+            model_type=args.model_type,
+            batch_size=B,
+            hidden_dim=H,
+            num_layers=L,
+            learning_rate=LR,
+            dropout=0.3,
+            use_play_features=args.play_features,
+            device=args.device,
+        )
 
 
 if __name__ == "__main__":
@@ -169,8 +185,5 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=int, default=-1)
     parser.add_argument("--model_type", type=str, default="transformer")
     parser.add_argument("--play_features", action="store_true")
-    parser.add_argument("--hidden_dim", type=int, default=32)
-    parser.add_argument("--num_layers", type=int, default=3)
-    parser.add_argument("--batch_size", type=int, default=512)
     args = parser.parse_args()
     main(args)

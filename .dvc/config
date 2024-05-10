@@ -1,0 +1,7 @@
+[core]
+    remote = bdb-transformers
+[cache]
+    type = "reflink,hardlink,symlink,copy"
+['remote "bdb-transformers"']
+    url = azure://bdb-transformers/
+    account_name = deveastusdvcremote

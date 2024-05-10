@@ -117,18 +117,19 @@ class ZooSpacialEncoder(nn.Module):
             * num_layers,
         )
         self.decoder = nn.Sequential(
-            *[
-                nn.Linear(hidden_dim, hidden_dim),
-                nn.ReLU(),
-                nn.BatchNorm1d(hidden_dim),
-            ]
-            * max(0, num_layers // 3 - 1),
+            # *[
+            #     nn.Linear(hidden_dim, hidden_dim),
+            #     nn.ReLU(),
+            #     nn.BatchNorm1d(hidden_dim),
+            # ]
+            # * max(0, num_layers // 3 - 1),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.LayerNorm(hidden_dim),
-            # nn.Dropout(dropout),
+            nn.BatchNorm1d(hidden_dim),
+            nn.Dropout(dropout),
             nn.Linear(hidden_dim, hidden_dim // 4),
             nn.ReLU(),
+            nn.LayerNorm(hidden_dim // 4),
             nn.Linear(hidden_dim // 4, 2),
         )
 
@@ -162,28 +163,35 @@ class LitModel(LightningModule):
     def __init__(
         self,
         model_type: str,
-        feature_len: int,
         batch_size: int,
         hidden_dim: int,
         num_layers: int,
+        use_play_features: bool = False,
         dropout: float = 0.1,
         learning_rate: float = 1e-3,
     ):
         super().__init__()
-        if model_type.lower() == "transformer":
-            self.model = SumerTransformerSpacialEncoder(
-                feature_len=feature_len, hidden_dim=hidden_dim, num_layers=num_layers, dropout=dropout
-            )
-            self.example_input_array = torch.randn((batch_size, 22, feature_len))
-        elif model_type.lower() == "zoo":
-            self.model = ZooSpacialEncoder(
-                feature_len=feature_len, hidden_dim=hidden_dim, num_layers=num_layers, dropout=dropout
-            )
-            self.example_input_array = torch.randn((batch_size, 10, 11, feature_len))
+        self.model_type = model_type.lower()
+        self.use_play_features = use_play_features
+        self.model_class = SumerTransformerSpacialEncoder if self.model_type == "transformer" else ZooSpacialEncoder
+        self.feature_len = 6 if self.model_type == "transformer" else 10
+        if self.use_play_features:
+            self.feature_len += 3
 
+        self.model = self.model_class(
+            feature_len=self.feature_len, hidden_dim=hidden_dim, num_layers=num_layers, dropout=dropout
+        )
+        self.example_input_array = (
+            torch.randn((batch_size, 22, self.feature_len))
+            if self.model_type == "transformer"
+            else torch.randn((batch_size, 10, 11, self.feature_len))
+        )
+
+        self.learning_rate = learning_rate
         self.save_hyperparameters()
         # self.logger.log_hyperparams(self.hparams)
-        self.metric = torch.nn.MSELoss()
+        # self.metric = torch.nn.MSELoss()
+        self.metric = torch.nn.SmoothL1Loss()
 
     def forward(self, x):
         return self.model(x)
@@ -216,7 +224,7 @@ class LitModel(LightningModule):
         return y_hat
 
     def configure_optimizers(self):
-        optimizer = AdamW(self.parameters(), lr=self.hparams["learning_rate"])
+        optimizer = AdamW(self.parameters(), lr=self.learning_rate)
         return optimizer
 
     def get_hyperparams(self):
