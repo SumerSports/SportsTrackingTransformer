@@ -24,9 +24,9 @@ def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None) -> pl.Da
     if model is None:
         model = LitModel.load_from_checkpoint(ckpt_path)
 
-    train_ds: BDB2024_Dataset = load_datasets(model.model_type, model.use_play_features, split="train")
-    val_ds: BDB2024_Dataset = load_datasets(model.model_type, model.use_play_features, split="val")
-    test_ds: BDB2024_Dataset = load_datasets(model.model_type, model.use_play_features, split="test")
+    train_ds: BDB2024_Dataset = load_datasets(model.model_type, model.advanced, split="train")
+    val_ds: BDB2024_Dataset = load_datasets(model.model_type, model.advanced, split="val")
+    test_ds: BDB2024_Dataset = load_datasets(model.model_type, model.advanced, split="test")
     # Recreate unshuffled dataloaders for prediction
     dataloaders = {
         "train": DataLoader(train_ds, batch_size=1024, shuffle=False, num_workers=10),
@@ -66,7 +66,7 @@ def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None) -> pl.Da
             tackle_x_pred=(pl.col("tackle_x_rel_pred") + pl.col("play_origin_x")).round(1),
             tackle_y_pred=(pl.col("tackle_y_rel_pred") + pl.col("play_origin_y")).round(1),
             model_type=pl.lit(model.model_type),
-            used_play_features=model.hparams["use_play_features"],
+            advanced=model.hparams["advanced"],
             batch_size=model.hparams["batch_size"],
             hidden_dim=model.hparams["hidden_dim"],
             num_layers=model.hparams["num_layers"],
@@ -87,12 +87,12 @@ def train_model(
     num_layers,
     learning_rate,
     dropout,
-    use_play_features=False,
+    advanced=False,
     device=0,
     dbg_run=False,
 ):
-    train_ds: BDB2024_Dataset = load_datasets(model_type, use_play_features, split="test")
-    val_ds: BDB2024_Dataset = load_datasets(model_type, use_play_features, split="val")
+    train_ds: BDB2024_Dataset = load_datasets(model_type, advanced, split="test")
+    val_ds: BDB2024_Dataset = load_datasets(model_type, advanced, split="val")
 
     # convert to dataloaders for model fit
     train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=100)
@@ -106,7 +106,7 @@ def train_model(
         num_layers=num_layers,
         learning_rate=learning_rate,
         dropout=dropout,
-        use_play_features=use_play_features,
+        advanced=advanced,
     )
 
     devices = [device] if device >= 0 else "auto"  # if device is specified, use it, otherwise find 1 available GPU
@@ -125,7 +125,7 @@ def train_model(
 
     logger = TensorBoardLogger(
         save_dir=MODELS_PATH,
-        name=f"{model_type}{'_play' if use_play_features else ''}",
+        name=f"{model_type}{'_advanced' if advanced else ''}",
         log_graph=False,
         default_hp_metric=False,
         version=f"B{batch_size}_H{hidden_dim}_L{num_layers}_LR{learning_rate:.0e}_D{dropout}",
@@ -139,7 +139,7 @@ def train_model(
         sync_batchnorm=True,
         enable_model_summary=True,
         callbacks=[
-            callbacks.EarlyStopping(monitor="val_loss", patience=10),
+            callbacks.EarlyStopping(monitor="val_loss", patience=5),
             callbacks.ModelCheckpoint(monitor="val_loss", save_top_k=1, filename="{epoch}-{val_loss:.3f}"),
             callbacks.ModelSummary(max_depth=2),
         ],
@@ -160,7 +160,7 @@ def train_model(
 def main(args):
     batch_sizes = [32]
     lrs = [1e-4]
-    hidden_dims = [256, 128, 64]
+    hidden_dims = [64, 128, 256, 512, 1024]
     num_layers = [2, 4, 8]
 
     # create gridsearch iterable
@@ -175,7 +175,7 @@ def main(args):
             num_layers=L,
             learning_rate=LR,
             dropout=0.3,
-            use_play_features=args.play_features,
+            advanced=args.advanced,
             device=args.device,
         )
 
@@ -184,6 +184,6 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--device", type=int, default=-1)
     parser.add_argument("--model_type", type=str, default="transformer")
-    parser.add_argument("--play_features", action="store_true")
+    parser.add_argument("--advanced", action="store_true")
     args = parser.parse_args()
     main(args)

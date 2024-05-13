@@ -7,11 +7,16 @@ INPUT_DATA_DIR = Path("data/bdb_2024/")
 
 
 def get_players_df() -> pl.DataFrame:
-    return pl.read_csv(INPUT_DATA_DIR / "players.csv", null_values=["NA", "nan", "N/A", "NaN", ""]).with_columns(
-        pl.col("height")
-        .str.split("-")
-        .map_elements(lambda s: int(s[0]) * 12 + int(s[1]), return_dtype=int)
-        .alias("height_inches"),
+    return (
+        pl.read_csv(INPUT_DATA_DIR / "players.csv", null_values=["NA", "nan", "N/A", "NaN", ""])
+        .with_columns(
+            height_inches = pl.col("height")
+            .str.split("-")
+            .map_elements(lambda s: int(s[0]) * 12 + int(s[1]), return_dtype=int),
+        ).with_columns(
+            weight_Z = (pl.col("weight") - pl.col("weight").mean()) / pl.col("weight").std(),
+            height_Z = (pl.col("height_inches") - pl.col("height_inches").mean()) / pl.col("height_inches").std(),
+        )
     )
 
 
@@ -57,7 +62,7 @@ def add_features_to_tracking_df(
             how="inner",
         )
         .join(
-            players_df.select(["nflId", "weight", "height_inches"]).unique(),
+            players_df.select(["nflId", "weight_Z", "height_Z"]).unique(),
             on="nflId",
             how="inner",
         )
@@ -260,10 +265,6 @@ def main():
     tracking_df = augment_mirror_tracking(tracking_df)
     tracking_df = add_relative_positions(tracking_df)
 
-    # trim margin frames where ball-carrier is unlikely to have ball (noisy)
-    tracking_df = tracking_df.filter(pl.col("frameId") > 5).filter(
-        pl.col("frameId") <= (pl.col("frameId").max().over(["gameId", "playId", "mirrored"]) - 4)
-    )
     tkl_loc_tgt_df, tracking_df = get_tackle_loc_target_df(tracking_df)
 
     split_dfs = split_train_test_val(tracking_df, tkl_loc_tgt_df)

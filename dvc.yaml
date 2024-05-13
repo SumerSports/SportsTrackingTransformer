@@ -53,37 +53,37 @@ stages:
         persist: true
 
 
-  precompute_datasets_with_play: # this might take an hour
-    cmd: rye run python src/datasets.py --play_features
+  precompute_datasets_advanced: # this might take an hour
+    cmd: rye run python src/datasets.py --advanced
     deps:
     - src/datasets.py
     - data/split_prepped_data/
     outs:
-    - data/datasets/transformer_play/
-    - data/datasets/zoo_play/
+    - data/datasets/transformer_advanced/
+    # - data/datasets/zoo_advanced/
 
-  # train_zoo_model_with_play:
-  #   cmd: rye run python src/train.py --model_type zoo --play_features
+  # train_zoo_model_with_advanced:
+  #   cmd: rye run python src/train.py --model_type zoo --advanced
 
   #   deps:
   #   - src/train.py
   #   - src/datasets.py
   #   - src/models.py
-  #   - data/datasets/zoo_play/
+  #   - data/datasets/zoo_advanced/
   #   outs:
-  #   - data/models/zoo_play/:
+  #   - data/models/zoo_advanced/:
   #       persist: true
 
-  train_transformer_model_with_play:
-    cmd: rye run python src/train.py --model_type transformer --play_features
+  train_transformer_model_advanced:
+    cmd: rye run python src/train.py --model_type transformer --advanced
 
     deps:
     - src/train.py
     - src/datasets.py
     - src/models.py
-    - data/datasets/transformer_play/
+    - data/datasets/transformer_advanced/
     outs:
-    - data/models/transformer_play/:
+    - data/models/transformer_advanced/:
         persist: true
 
   pick_best_models:

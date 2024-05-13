@@ -18,7 +18,7 @@ class SumerTransformerSpacialEncoder(nn.Module):
     ):
         super().__init__()
         dim_feedforward = hidden_dim * 4
-        num_heads = min(4, hidden_dim // 8)
+        num_heads = max(2, hidden_dim // 32)
         self.hyperparams = {
             "hidden_dim": hidden_dim,
             "num_layers": num_layers,
@@ -166,17 +166,17 @@ class LitModel(LightningModule):
         batch_size: int,
         hidden_dim: int,
         num_layers: int,
-        use_play_features: bool = False,
+        advanced: bool = False,
         dropout: float = 0.1,
         learning_rate: float = 1e-3,
     ):
         super().__init__()
         self.model_type = model_type.lower()
-        self.use_play_features = use_play_features
+        self.advanced = advanced
         self.model_class = SumerTransformerSpacialEncoder if self.model_type == "transformer" else ZooSpacialEncoder
         self.feature_len = 6 if self.model_type == "transformer" else 10
-        if self.use_play_features:
-            self.feature_len += 3
+        if self.advanced:
+            self.feature_len = 10 if self.model_type == "transformer" else 13
 
         self.model = self.model_class(
             feature_len=self.feature_len, hidden_dim=hidden_dim, num_layers=num_layers, dropout=dropout

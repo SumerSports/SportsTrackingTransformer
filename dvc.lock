@@ -30,39 +30,39 @@ stages:
       nfiles: 13
     - path: src/prep_data.py
       hash: md5
-      md5: 3817ee4c9ee63c10d5a6d8b7dfaec5b9
-      size: 10668
+      md5: 10041bd6fd4802cb7774fd82b33ee136
+      size: 10674
     outs:
     - path: data/split_prepped_data/
       hash: md5
-      md5: 01e3f324290aa4e90854dc25b0bd1eae.dir
-      size: 877418035
+      md5: c8e24140d1d66ff0c9d74f83e20c2f87.dir
+      size: 1121854953
       nfiles: 6
   precompute_datasets:
     cmd: rye run python src/datasets.py
     deps:
     - path: data/split_prepped_data/
       hash: md5
-      md5: 01e3f324290aa4e90854dc25b0bd1eae.dir
-      size: 877418035
+      md5: c8e24140d1d66ff0c9d74f83e20c2f87.dir
+      size: 1121854953
       nfiles: 6
     - path: src/datasets.py
       hash: md5
-      md5: 908b51eed4bd744a2ff4da0afac59de5
-      size: 6782
+      md5: 4fd2514059969096589c847a38c1e5c9
+      size: 6878
     outs:
     - path: data/datasets/transformer/
       hash: md5
-      md5: ff8b7cade9a3641e0adf21d09353234f.dir
-      size: 5495617760
+      md5: 13f8420b4e58627d0d1a63e15ac17b54.dir
+      size: 6975828037
       nfiles: 3
     - path: data/datasets/zoo/
       hash: md5
-      md5: 9a8383e78b016c6e5d0003821d1ea440.dir
-      size: 8729346073
+      md5: b2385992e653994413c2c91b415a0684.dir
+      size: 11079773462
       nfiles: 3
   precompute_datasets_with_play:
-    cmd: rye run python src/datasets.py --play_features
+    cmd: rye run python src/datasets.py --advanced
     deps:
     - path: data/split_prepped_data/
       hash: md5
@@ -71,113 +71,113 @@ stages:
       nfiles: 6
     - path: src/datasets.py
       hash: md5
-      md5: 908b51eed4bd744a2ff4da0afac59de5
-      size: 6782
+      md5: ee862f2dc7f247ea41425dee9dcbcfa7
+      size: 6850
     outs:
     - path: data/datasets/transformer_play/
       hash: md5
-      md5: 60cc5588fac75c9992eb023616eb91f4.dir
-      size: 5715986348
+      md5: f6f49be8632e944c592dd49346d23971.dir
+      size: 5862898230
       nfiles: 3
     - path: data/datasets/zoo_play/
       hash: md5
-      md5: 00923c185c5f840cfee299e9af09150f.dir
-      size: 9831161761
+      md5: acc9b6f0da44c49c621434cc05b51053.dir
+      size: 10565747262
       nfiles: 3
   train_transformer_models:
     cmd: rye run python src/train.py --model_type transformer
     deps:
     - path: data/datasets/transformer
       hash: md5
-      md5: ff8b7cade9a3641e0adf21d09353234f.dir
-      size: 5495617760
+      md5: 13f8420b4e58627d0d1a63e15ac17b54.dir
+      size: 6975828037
       nfiles: 3
     - path: src/datasets.py
       hash: md5
-      md5: 908b51eed4bd744a2ff4da0afac59de5
-      size: 6782
+      md5: 4fd2514059969096589c847a38c1e5c9
+      size: 6878
     - path: src/models.py
       hash: md5
-      md5: 2f01fe84ddcf118f5b3574439b6de732
-      size: 8064
+      md5: 9e3857c7b61ee9874016c78d50938359
+      size: 8073
     - path: src/train.py
       hash: md5
-      md5: f18494ca8169546fe7976efc37613f22
-      size: 7050
+      md5: 742586813dca31bb4bd257116fd5201e
+      size: 6945
     outs:
     - path: data/models/transformer/
       hash: md5
-      md5: 30554042a2cff9f382a1e6cc1df52054.dir
-      size: 866752412
-      nfiles: 61
+      md5: 5c4c321ddc0927571b9643c36e9c7b03.dir
+      size: 3379424734
+      nfiles: 60
   train_zoo_models:
     cmd: rye run python src/train.py --model_type zoo
     deps:
     - path: data/datasets/zoo/
       hash: md5
-      md5: 9a8383e78b016c6e5d0003821d1ea440.dir
-      size: 8729346073
+      md5: b2385992e653994413c2c91b415a0684.dir
+      size: 11079773462
       nfiles: 3
     - path: src/datasets.py
       hash: md5
-      md5: 908b51eed4bd744a2ff4da0afac59de5
-      size: 6782
+      md5: 4fd2514059969096589c847a38c1e5c9
+      size: 6878
     - path: src/models.py
       hash: md5
-      md5: 2f01fe84ddcf118f5b3574439b6de732
-      size: 8064
+      md5: 9e3857c7b61ee9874016c78d50938359
+      size: 8073
     - path: src/train.py
       hash: md5
-      md5: f18494ca8169546fe7976efc37613f22
-      size: 7050
+      md5: 742586813dca31bb4bd257116fd5201e
+      size: 6945
     outs:
     - path: data/models/zoo/
       hash: md5
-      md5: 755b2e48d7bb544c5a68a5fbb3d70182.dir
-      size: 459061502
+      md5: 8c927211676867d4947e87232f88e83e.dir
+      size: 704709349
       nfiles: 60
   train_transformer_model_with_play:
-    cmd: rye run python src/train.py --model_type transformer --play_features
+    cmd: rye run python src/train.py --model_type transformer --advanced
     deps:
     - path: data/datasets/transformer_play/
       hash: md5
-      md5: 60cc5588fac75c9992eb023616eb91f4.dir
-      size: 5715986348
+      md5: f6f49be8632e944c592dd49346d23971.dir
+      size: 5862898230
       nfiles: 3
     - path: src/datasets.py
       hash: md5
-      md5: 908b51eed4bd744a2ff4da0afac59de5
-      size: 6782
+      md5: ee862f2dc7f247ea41425dee9dcbcfa7
+      size: 6850
     - path: src/models.py
       hash: md5
-      md5: 2f01fe84ddcf118f5b3574439b6de732
+      md5: 345387ec02d74a874a4efb80278c991d
       size: 8064
     - path: src/train.py
       hash: md5
-      md5: f18494ca8169546fe7976efc37613f22
-      size: 7050
+      md5: 9e0591fe6397b429bf11ef9e92c8ec9c
+      size: 7108
     outs:
     - path: data/models/transformer_play/
       hash: md5
-      md5: a9aa46aec69b309fafc445412c74a17c.dir
-      size: 470894508
-      nfiles: 41
+      md5: 1249597211bf34689abfa48757f1a10e.dir
+      size: 903464642
+      nfiles: 68
   pick_best_models:
     cmd: rye run python src/pick_best_models.py
     deps:
     - path: data/models/
       hash: md5
-      md5: e22fe282882e06b3170f7d9152d12c79.dir
-      size: 1796708631
-      nfiles: 164
+      md5: 187dfb8dbb0ee566abe1607d5dd5287e.dir
+      size: 7464004267
+      nfiles: 181
     - path: src/datasets.py
       hash: md5
-      md5: 908b51eed4bd744a2ff4da0afac59de5
-      size: 6782
+      md5: 4fd2514059969096589c847a38c1e5c9
+      size: 6878
     - path: src/models.py
       hash: md5
-      md5: 2f01fe84ddcf118f5b3574439b6de732
-      size: 8064
+      md5: 9e3857c7b61ee9874016c78d50938359
+      size: 8073
     - path: src/pick_best_models.py
       hash: md5
       md5: ebcce4c3933bbe5abc9b11e5ce5a62d3
@@ -185,6 +185,50 @@ stages:
     outs:
     - path: data/best_models/
       hash: md5
-      md5: 08817c534d9d6596ee1061a9d992465d.dir
-      size: 133987487
+      md5: e0e67b1ab515b3c6e45dfd4a46e0e411.dir
+      size: 148140983
       nfiles: 6
+  precompute_datasets_advanced:
+    cmd: rye run python src/datasets.py --advanced
+    deps:
+    - path: data/split_prepped_data/
+      hash: md5
+      md5: c8e24140d1d66ff0c9d74f83e20c2f87.dir
+      size: 1121854953
+      nfiles: 6
+    - path: src/datasets.py
+      hash: md5
+      md5: 4fd2514059969096589c847a38c1e5c9
+      size: 6878
+    outs:
+    - path: data/datasets/transformer_advanced/
+      hash: md5
+      md5: 91388fa9b0cbe1e112b1e6df449328e9.dir
+      size: 7348722431
+      nfiles: 3
+  train_transformer_model_advanced:
+    cmd: rye run python src/train.py --model_type transformer --advanced
+    deps:
+    - path: data/datasets/transformer_advanced/
+      hash: md5
+      md5: 91388fa9b0cbe1e112b1e6df449328e9.dir
+      size: 7348722431
+      nfiles: 3
+    - path: src/datasets.py
+      hash: md5
+      md5: 4fd2514059969096589c847a38c1e5c9
+      size: 6878
+    - path: src/models.py
+      hash: md5
+      md5: 9e3857c7b61ee9874016c78d50938359
+      size: 8073
+    - path: src/train.py
+      hash: md5
+      md5: 742586813dca31bb4bd257116fd5201e
+      size: 6945
+    outs:
+    - path: data/models/transformer_advanced/
+      hash: md5
+      md5: 0fffbb36ec134b62f1ba4ac2bb4e5768.dir
+      size: 3379870184
+      nfiles: 61
