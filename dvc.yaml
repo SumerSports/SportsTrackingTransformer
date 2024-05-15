@@ -37,8 +37,7 @@ stages:
     - src/models.py
     - data/datasets/zoo/
     outs:
-    - data/models/zoo/:
-        persist: true
+    - data/models/zoo/
 
   train_transformer_models:
     cmd: rye run python src/train.py --model_type transformer
@@ -49,8 +48,7 @@ stages:
     - src/models.py
     - data/datasets/transformer
     outs:
-    - data/models/transformer/:
-        persist: true
+    - data/models/transformer/
 
 
   precompute_datasets_advanced: # this might take an hour
@@ -71,10 +69,9 @@ stages:
   #   - src/models.py
   #   - data/datasets/zoo_advanced/
   #   outs:
-  #   - data/models/zoo_advanced/:
-  #       persist: true
+  #   - data/models/zoo_advanced
 
-  train_transformer_model_advanced:
+  train_transformer_models_advanced:
     cmd: rye run python src/train.py --model_type transformer --advanced
 
     deps:
@@ -83,8 +80,7 @@ stages:
     - src/models.py
     - data/datasets/transformer_advanced/
     outs:
-    - data/models/transformer_advanced/:
-        persist: true
+    - data/models/transformer_advanced
 
   pick_best_models:
     cmd: rye run python src/pick_best_models.py

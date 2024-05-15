@@ -65,13 +65,8 @@ def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None) -> pl.Da
             tackle_y_rel_pred=pl.col("tackle_y_rel_pred").round(1),
             tackle_x_pred=(pl.col("tackle_x_rel_pred") + pl.col("play_origin_x")).round(1),
             tackle_y_pred=(pl.col("tackle_y_rel_pred") + pl.col("play_origin_y")).round(1),
-            model_type=pl.lit(model.model_type),
-            advanced=model.hparams["advanced"],
-            batch_size=model.hparams["batch_size"],
-            hidden_dim=model.hparams["hidden_dim"],
-            num_layers=model.hparams["num_layers"],
-            dropout=model.hparams["dropout"],
-            learning_rate=model.hparams["learning_rate"],
+        ).with_columns(
+            **{k: pl.lit(v) for k, v in model.hparams.items()}
         )
 
         assert pred_df.shape[0] == len(dataset)
@@ -109,7 +104,7 @@ def train_model(
         advanced=advanced,
     )
 
-    devices = [device] if device >= 0 else "auto"  # if device is specified, use it, otherwise find 1 available GPU
+    devices = [device] if device >= 0 else 1  # if device is specified, use it, otherwise find 1 available GPU
     if dbg_run:
         # debug run
         dbg_trainer = Trainer(
@@ -160,8 +155,8 @@ def train_model(
 def main(args):
     batch_sizes = [32]
     lrs = [1e-4]
-    hidden_dims = [64, 128, 256, 512, 1024]
-    num_layers = [2, 4, 8]
+    hidden_dims = [64, 128, 256, 512]
+    num_layers = [2, 4, 6]
 
     # create gridsearch iterable
     gridsearch = product(batch_sizes, lrs, hidden_dims, num_layers)

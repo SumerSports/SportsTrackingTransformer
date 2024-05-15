@@ -18,7 +18,7 @@ class SumerTransformerSpacialEncoder(nn.Module):
     ):
         super().__init__()
         dim_feedforward = hidden_dim * 4
-        num_heads = max(2, hidden_dim // 32)
+        num_heads = max(2, hidden_dim // 64)
         self.hyperparams = {
             "hidden_dim": hidden_dim,
             "num_layers": num_layers,
@@ -188,6 +188,9 @@ class LitModel(LightningModule):
         )
 
         self.learning_rate = learning_rate
+        self.num_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+        self.hparams['params'] = self.num_params
+        print(self.hparams)
         self.save_hyperparameters()
         # self.logger.log_hyperparams(self.hparams)
         # self.metric = torch.nn.MSELoss()
