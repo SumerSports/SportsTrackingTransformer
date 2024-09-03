@@ -5,20 +5,21 @@ description = "Demo repository showcasing Transformer model architecture for spo
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "torch>=2.4.0",
+    "torch==2.3.0",
     "polars[numpy,pandas,plot,pyarrow,style]>=1.5.0",
     "lightning>=2.4.0",
-    "tensorboardx>=2.6.2.2",
     "dvc>=3.54.1",
     "kaggle>=1.6.17",
     "tqdm>=4.66.5",
     "ipykernel>=6.29.5",
     "ruff>=0.6.3",
+    "torch-tb-profiler>=0.4.3",
 ]
 
 [tool.ruff]
 line-length = 120
 indent-width = 4
+exclude = [".ipynb", ".ipynb_checkpoints"]
 
 [tool.ruff.lint]
 select = [

@@ -1,0 +1,63 @@
+schema: '2.0'
+stages:
+  get_bdb_2024_data:
+    cmd: kaggle competitions download -c nfl-big-data-bowl-2024 -p data/
+    outs:
+    - path: data/nfl-big-data-bowl-2024.zip
+      hash: md5
+      md5: d39d15812f2c6aa9450eaef71f71e601
+      size: 292799779
+  unzip_bdb_2024_data:
+    cmd: unzip data/nfl-big-data-bowl-2024.zip -d data/bdb_2024/
+    deps:
+    - path: data/nfl-big-data-bowl-2024.zip
+      hash: md5
+      md5: d39d15812f2c6aa9450eaef71f71e601
+      size: 292799779
+    outs:
+    - path: data/bdb_2024
+      hash: md5
+      md5: c7869f4305b74f791c1de31cdee7982d.dir
+      size: 1611304510
+      nfiles: 13
+  prep_data:
+    cmd: uv run python src/prep_data.py
+    deps:
+    - path: data/bdb_2024/
+      hash: md5
+      md5: c7869f4305b74f791c1de31cdee7982d.dir
+      size: 1611304510
+      nfiles: 13
+    - path: src/prep_data.py
+      hash: md5
+      md5: 560ede4cb0a2d18ad7c9d349781e7acf
+      size: 10666
+    outs:
+    - path: data/split_prepped_data/
+      hash: md5
+      md5: ecdf04427b9468b5868bb362de67b52f.dir
+      size: 1023268480
+      nfiles: 6
+  precompute_datasets:
+    cmd: uv run python src/datasets.py
+    deps:
+    - path: data/split_prepped_data/
+      hash: md5
+      md5: ecdf04427b9468b5868bb362de67b52f.dir
+      size: 1023268480
+      nfiles: 6
+    - path: src/datasets.py
+      hash: md5
+      md5: e284041549f0d31c4ff89575ed30a72d
+      size: 6335
+    outs:
+    - path: data/datasets/transformer/
+      hash: md5
+      md5: 791aa3f2c52487c0917750d462e5df56.dir
+      size: 6974412135
+      nfiles: 3
+    - path: data/datasets/zoo/
+      hash: md5
+      md5: f051441b8fc435720d0894097dc11307.dir
+      size: 11078357560
+      nfiles: 3

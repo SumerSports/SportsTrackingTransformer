@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Dict
 
 import polars as pl
 
@@ -9,13 +8,14 @@ INPUT_DATA_DIR = Path("data/bdb_2024/")
 def get_players_df() -> pl.DataFrame:
     return (
         pl.read_csv(INPUT_DATA_DIR / "players.csv", null_values=["NA", "nan", "N/A", "NaN", ""])
+        .with_columns(  # if time, we can use height/weight as features as well
+            height_inches=(
+                pl.col("height").str.split("-").map_elements(lambda s: int(s[0]) * 12 + int(s[1]), return_dtype=int)
+            )
+        )
         .with_columns(
-            height_inches = pl.col("height")
-            .str.split("-")
-            .map_elements(lambda s: int(s[0]) * 12 + int(s[1]), return_dtype=int),
-        ).with_columns(
-            weight_Z = (pl.col("weight") - pl.col("weight").mean()) / pl.col("weight").std(),
-            height_Z = (pl.col("height_inches") - pl.col("height_inches").mean()) / pl.col("height_inches").std(),
+            weight_Z=(pl.col("weight") - pl.col("weight").mean()) / pl.col("weight").std(),
+            height_Z=(pl.col("height_inches") - pl.col("height_inches").mean()) / pl.col("height_inches").std(),
         )
     )
 
@@ -188,7 +188,7 @@ def get_tackle_loc_target_df(tracking_df: pl.DataFrame) -> pl.DataFrame:
     return tackle_loc_df, tracking_df
 
 
-def split_train_test_val(tracking_df: pl.DataFrame, target_df: pl.DataFrame) -> Dict[str, pl.DataFrame]:
+def split_train_test_val(tracking_df: pl.DataFrame, target_df: pl.DataFrame) -> dict[str, pl.DataFrame]:
     tracking_df = tracking_df.sort(["gameId", "playId", "mirrored", "frameId"])
     target_df = target_df.sort(["gameId", "playId", "mirrored"])
 

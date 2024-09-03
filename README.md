@@ -23,6 +23,5 @@ After cloning the repo and opening a new terminal inside the repo workspace, per
 2. Run `uv sync` to create a `.venv` and populate it with the locked dependencies.
 3. Run `uv venv` and `source .venv/bin/activate` to create and activate the virtual environment.
 
-If you want to skip this, you can also just use `rye run dvc repro` to kick off the pipeline from scratch.
 
 The notebook `results_analysis` has some viz and results.

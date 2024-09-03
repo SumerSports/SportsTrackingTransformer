@@ -45,8 +45,8 @@ def find_best_checkpoint(root_dir: Path) -> dict[str, Path]:
 
 def main(args):
     # Example usage
-    root_dir = Path("data/models")
-    out_root_dir = Path("data/best_models")
+    root_dir = Path("models")
+    out_root_dir = Path("models/best_models")
     best_checkpoints = find_best_checkpoint(root_dir)
 
     for model_name, checkpoint_path in best_checkpoints.items():
@@ -59,7 +59,6 @@ def main(args):
         if best_model_out_path.exists():
             best_model_out_path.unlink()
         copy(checkpoint_path, best_model_out_path)
-
 
         results_df_path = checkpoint_path.with_suffix(".results.parquet")
         best_model_results_path = out_dir / "best_model_results.parquet"

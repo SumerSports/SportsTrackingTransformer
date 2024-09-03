@@ -4,5 +4,10 @@
     ],
     "editor.defaultFormatter": "charliermarsh.ruff",
     "notebook.defaultFormatter": "charliermarsh.ruff",
-    "ruff.lineLength": null
+    "ruff.lineLength": 120,
+    "ruff.configuration": "pyproject.toml",
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "python.languageServer": "Pylance",
+    "python.analysis.autoImportCompletions": true
 }

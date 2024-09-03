@@ -166,17 +166,13 @@ class LitModel(LightningModule):
         batch_size: int,
         hidden_dim: int,
         num_layers: int,
-        advanced: bool = False,
         dropout: float = 0.1,
         learning_rate: float = 1e-3,
     ):
         super().__init__()
         self.model_type = model_type.lower()
-        self.advanced = advanced
         self.model_class = SumerTransformerSpacialEncoder if self.model_type == "transformer" else ZooSpacialEncoder
         self.feature_len = 6 if self.model_type == "transformer" else 10
-        if self.advanced:
-            self.feature_len = 10 if self.model_type == "transformer" else 13
 
         self.model = self.model_class(
             feature_len=self.feature_len, hidden_dim=hidden_dim, num_layers=num_layers, dropout=dropout
@@ -189,7 +185,7 @@ class LitModel(LightningModule):
 
         self.learning_rate = learning_rate
         self.num_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
-        self.hparams['params'] = self.num_params
+        self.hparams["params"] = self.num_params
         print(self.hparams)
         self.save_hyperparameters()
         # self.logger.log_hyperparams(self.hparams)

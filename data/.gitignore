@@ -1,5 +1,2 @@
 # Ignore everything in this directory
 **/*
-
-# But don't ignore these
-!best_models/**

@@ -12,7 +12,7 @@ stages:
     - data/bdb_2024
 
   prep_data:
-    cmd: rye run python src/prep_data.py
+    cmd: uv run python src/prep_data.py
     deps:
     - src/prep_data.py
     - data/bdb_2024/
@@ -20,7 +20,7 @@ stages:
     - data/split_prepped_data/
 
   precompute_datasets: # this might take an hour
-    cmd: rye run python src/datasets.py
+    cmd: uv run python src/datasets.py
     deps:
     - src/datasets.py
     - data/split_prepped_data/
@@ -29,7 +29,7 @@ stages:
     - data/datasets/zoo/
 
   train_zoo_models:
-    cmd: rye run python src/train.py --model_type zoo
+    cmd: uv run python src/train.py --model_type zoo --device 0
 
     deps:
     - src/train.py
@@ -39,9 +39,10 @@ stages:
     outs:
     - data/models/zoo/:
         persist: true
+        cache: true
 
   train_transformer_models:
-    cmd: rye run python src/train.py --model_type transformer
+    cmd: uv run python src/train.py --model_type transformer --device 1
 
     deps:
     - src/train.py
@@ -51,42 +52,10 @@ stages:
     outs:
     - data/models/transformer/:
         persist: true
-
-
-  precompute_datasets_advanced: # this might take an hour
-    cmd: rye run python src/datasets.py --advanced
-    deps:
-    - src/datasets.py
-    - data/split_prepped_data/
-    outs:
-    - data/datasets/transformer_advanced/
-    # - data/datasets/zoo_advanced/
-
-  # train_zoo_model_with_advanced:
-  #   cmd: rye run python src/train.py --model_type zoo --advanced
-
-  #   deps:
-  #   - src/train.py
-  #   - src/datasets.py
-  #   - src/models.py
-  #   - data/datasets/zoo_advanced/
-  #   outs:
-  #   - data/models/zoo_advanced
-
-  train_transformer_models_advanced:
-    cmd: rye run python src/train.py --model_type transformer --advanced
-
-    deps:
-    - src/train.py
-    - src/datasets.py
-    - src/models.py
-    - data/datasets/transformer_advanced/
-    outs:
-    - data/models/transformer_advanced:
-        persist: true
+        cache: true
 
   pick_best_models:
-    cmd: rye run python src/pick_best_models.py
+    cmd: uv run python src/pick_best_models.py
 
     deps:
     - src/pick_best_models.py
@@ -95,4 +64,20 @@ stages:
 
     - data/models/
     outs:
-    - data/best_models/
+    - data/best_models/:
+        cache: false
+        persist: false
+artifacts:
+  best_zoo_model:
+    path: models/best_models/zoo/best_model.ckpt
+    type: model
+    desc: 'Best The Zoo Architecture Model'
+    meta:
+      framework: pytorch-lightning
+  
+  best_transformer_model:
+    path: models/best_models/transformer/best_model.ckpt
+    type: model
+    desc: 'Best Transformer Architecture Model'
+    meta:
+      framework: pytorch-lightning

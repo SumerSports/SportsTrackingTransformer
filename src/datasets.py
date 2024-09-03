@@ -1,9 +1,7 @@
 import multiprocessing as mp
 import pickle
 import time
-from argparse import ArgumentParser
 from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -18,15 +16,9 @@ class BDB2024_Dataset(Dataset):
         model_type,
         feature_df: pl.DataFrame,
         tgt_df: pl.DataFrame,
-        advanced: bool = False,
     ):
         self.model_type = model_type
-        self.keys = list(
-            feature_df.select(["gameId", "playId", "mirrored", "frameId"])
-            .unique()
-            .rows()
-        )
-        self.advanced = advanced
+        self.keys = list(feature_df.select(["gameId", "playId", "mirrored", "frameId"]).unique().rows())
 
         # convert to pandas form with index so we can quickly grab a set of rows by key
         self.feature_df_partition = (
@@ -37,7 +29,8 @@ class BDB2024_Dataset(Dataset):
         self.tgt_df_partition = (
             tgt_df.to_pandas(use_pyarrow_extension_array=True)
             # .partition_by(['gameId', 'playId', 'mirrored'], as_dict=True, maintain_order=False)
-            .set_index(["gameId", "playId", "mirrored"]).sort_index()
+            .set_index(["gameId", "playId", "mirrored"])
+            .sort_index()
         )
 
         # precompute features and store in dicts
@@ -46,7 +39,7 @@ class BDB2024_Dataset(Dataset):
         with mp.Pool(processes=8) as pool:
             results = pool.map(
                 self.process_key,
-                tqdm(self.keys, desc="Pre-computing features", total=len(self.keys)),
+                tqdm(self.keys, desc="Pre-computing feature transforms", total=len(self.keys)),
             )
             # Unpack results
             for key, tgt_array, feature_array in results:
@@ -55,15 +48,13 @@ class BDB2024_Dataset(Dataset):
 
     def process_key(self, key):
         tgt_array = self.transform_target_df(self.tgt_df_partition.loc[key[:-1]])
-        feature_array = self.transform_input_frame_df(
-            self.feature_df_partition.loc[key]
-        )
+        feature_array = self.transform_input_frame_df(self.feature_df_partition.loc[key])
         return (key, tgt_array, feature_array)
 
     def __len__(self):
         return len(self.keys)
 
-    def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
+    def __getitem__(self, idx) -> tuple[np.ndarray, np.ndarray]:
         # convert idx to key and grab the precomputed arrays
         key = self.keys[idx]
         return self.feature_arrays[key], self.tgt_arrays[key[:-1]]
@@ -80,22 +71,12 @@ class BDB2024_Dataset(Dataset):
 
     def transform_target_df(self, tgt_df: pd.DataFrame) -> np.ndarray:
         # should be same for all model architectures
-        y = (
-            tgt_df[["tackle_x_rel", "tackle_y_rel"]]
-            .to_numpy(dtype=np.float32)
-            .squeeze()
-        )
+        y = tgt_df[["tackle_x_rel", "tackle_y_rel"]].to_numpy(dtype=np.float32).squeeze()
         assert y.shape == (2,)
         return y
 
-    def transformer_transform_input_frame_df(
-        self, frame_df: pd.DataFrame
-    ) -> np.ndarray:
+    def transformer_transform_input_frame_df(self, frame_df: pd.DataFrame) -> np.ndarray:
         features = ["x_rel", "y_rel", "vx", "vy", "side", "is_ball_carrier"]
-
-        if self.advanced:
-            features += ["ox", "oy", "height_Z", "weight_Z"]  # additional player_data
-            #  "down", "yardsToGo", "distanceToGoal"] # addnl play features
 
         x = frame_df[features].to_numpy(dtype=np.float32)
         assert x.shape == (22, len(features))
@@ -104,27 +85,12 @@ class BDB2024_Dataset(Dataset):
     def zoo_transform_input_frame_df(self, frame_df: pd.DataFrame) -> np.ndarray:
         # Isolate offensive and defensive players
         ball_carrier = frame_df[frame_df["is_ball_carrier"] == 1]
-        off_plyrs = frame_df[
-            (frame_df["side"] == 1) & (frame_df["is_ball_carrier"] == 0)
-        ]
+        off_plyrs = frame_df[(frame_df["side"] == 1) & (frame_df["is_ball_carrier"] == 0)]
         def_plyrs = frame_df[frame_df["side"] == -1]
 
-        ball_carr_mvmt_feats = (
-            ball_carrier[["x_rel", "y_rel", "vx", "vy"]]
-            .to_numpy(dtype=np.float32)
-            .squeeze()
-        )
-        off_mvmt_feats = off_plyrs[["x_rel", "y_rel", "vx", "vy"]].to_numpy(
-            dtype=np.float32
-        )
-        def_mvmt_feats = def_plyrs[["x_rel", "y_rel", "vx", "vy"]].to_numpy(
-            dtype=np.float32
-        )
-        advanced_feats = (
-            frame_df[["down", "yardsToGo", "distanceToGoal"]]
-            .to_numpy(dtype=np.float32)[0]
-            .squeeze()
-        )
+        ball_carr_mvmt_feats = ball_carrier[["x_rel", "y_rel", "vx", "vy"]].to_numpy(dtype=np.float32).squeeze()
+        off_mvmt_feats = off_plyrs[["x_rel", "y_rel", "vx", "vy"]].to_numpy(dtype=np.float32)
+        def_mvmt_feats = def_plyrs[["x_rel", "y_rel", "vx", "vy"]].to_numpy(dtype=np.float32)
 
         # Zoo interaction features
         x = [
@@ -146,21 +112,18 @@ class BDB2024_Dataset(Dataset):
             off_mvmt_feats[:, None, 2:] - def_mvmt_feats[None, :, 2:],
         ]
 
-        if self.advanced:
-            x.append(np.tile(advanced_feats, (10, 11, 1)))
-
         x = np.concatenate(
             x,
             dtype=np.float32,
             axis=-1,
         )
 
-        assert x.shape == (10, 11, 13 if self.advanced else 10)
+        assert x.shape == (10, 11, 10)
         return x
 
 
-def load_datasets(model_type: str, advanced: bool, split: str) -> BDB2024_Dataset:
-    ds_dir = Path("data/datasets") / f"{model_type}{'_advanced' if advanced else ''}"
+def load_datasets(model_type: str, split: str) -> BDB2024_Dataset:
+    ds_dir = Path("data/datasets") / model_type
     if "train" in split:
         with open(ds_dir / "train_dataset.pkl", "rb") as f:
             return pickle.load(f)
@@ -174,25 +137,17 @@ def load_datasets(model_type: str, advanced: bool, split: str) -> BDB2024_Datase
         raise ValueError(f"Unknown split: {split}")
 
 
-def main(args):
+def main():
     PREPPED_DATA_DIR = Path("data/split_prepped_data/")
     DATASET_DIR = Path("data/datasets/")
     for split in ["test", "val", "train"]:
         feature_df = pl.read_parquet(PREPPED_DATA_DIR / f"{split}_features.parquet")
         tgt_df = pl.read_parquet(PREPPED_DATA_DIR / f"{split}_targets.parquet")
         for model_type in ["zoo", "transformer"]:
-            if args.advanced and model_type == "zoo":
-                continue
-            print(
-                f"Creating {model_type} {split} {'advanced' if args.advanced else ''} dataset..."
-            )
+            print(f"Creating {model_type} {split} dataset...")
             tic = time.time()
-            dataset = BDB2024_Dataset(
-                model_type, feature_df, tgt_df, advanced=args.advanced
-            )
-            out_dir = (
-                DATASET_DIR / f"{model_type}{'_advanced' if args.advanced else ''}"
-            )
+            dataset = BDB2024_Dataset(model_type, feature_df, tgt_df)
+            out_dir = DATASET_DIR / f"{model_type}"
             out_dir.mkdir(exist_ok=True, parents=True)
             with open(out_dir / f"{split}_dataset.pkl", "wb") as f:
                 pickle.dump(dataset, f)
@@ -200,7 +155,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument("--advanced", action="store_true")
-    args = parser.parse_args()
-    main(args)
+    main()

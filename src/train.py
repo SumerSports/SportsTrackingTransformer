@@ -7,14 +7,15 @@ import lightning.pytorch.callbacks as callbacks
 import numpy as np
 import polars as pl
 import torch
-from datasets import BDB2024_Dataset, load_datasets
 from lightning.pytorch import Trainer
 from lightning.pytorch.loggers import TensorBoardLogger
-from models import LitModel
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-MODELS_PATH = Path("data/models")
+from datasets import BDB2024_Dataset, load_datasets
+from models import LitModel
+
+MODELS_PATH = Path("models")
 MODELS_PATH.mkdir(exist_ok=True)
 
 
@@ -27,9 +28,9 @@ def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None, devices=
     if isinstance(devices, list):
         assert len(devices) == 1, "Only one device should be used for prediction"
 
-    train_ds: BDB2024_Dataset = load_datasets(model.model_type, model.advanced, split="train")
-    val_ds: BDB2024_Dataset = load_datasets(model.model_type, model.advanced, split="val")
-    test_ds: BDB2024_Dataset = load_datasets(model.model_type, model.advanced, split="test")
+    train_ds: BDB2024_Dataset = load_datasets(model.model_type, split="train")
+    val_ds: BDB2024_Dataset = load_datasets(model.model_type, split="val")
+    test_ds: BDB2024_Dataset = load_datasets(model.model_type, split="test")
     # Recreate unshuffled dataloaders for prediction
     dataloaders = {
         "train": DataLoader(train_ds, batch_size=1024, shuffle=False, num_workers=10),
@@ -48,28 +49,30 @@ def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None, devices=
 
         assert preds.shape[0] == ds_keys.shape[0], f"Pred Shape: {preds.shape}, Keys Shape: {ds_keys.shape}"
 
-        pred_df = tgt_df.join(
-            pl.DataFrame(
-                {
-                    "gameId": ds_keys[:, 0],
-                    "playId": ds_keys[:, 1],
-                    "mirrored": ds_keys[:, 2],
-                    "frameId": ds_keys[:, 3],
-                    "dataset_split": split,
-                    "tackle_x_rel_pred": preds[:, 0].round(2),
-                    "tackle_y_rel_pred": preds[:, 1].round(2),
-                },
-                schema_overrides={"mirrored": bool},
-            ),
-            on=["gameId", "playId", "mirrored"],
-            how="inner",
-        ).with_columns(
-            tackle_x_rel_pred=pl.col("tackle_x_rel_pred").round(1),
-            tackle_y_rel_pred=pl.col("tackle_y_rel_pred").round(1),
-            tackle_x_pred=(pl.col("tackle_x_rel_pred") + pl.col("play_origin_x")).round(1),
-            tackle_y_pred=(pl.col("tackle_y_rel_pred") + pl.col("play_origin_y")).round(1),
-        ).with_columns(
-            **{k: pl.lit(v) for k, v in model.hparams.items()}
+        pred_df = (
+            tgt_df.join(
+                pl.DataFrame(
+                    {
+                        "gameId": ds_keys[:, 0],
+                        "playId": ds_keys[:, 1],
+                        "mirrored": ds_keys[:, 2],
+                        "frameId": ds_keys[:, 3],
+                        "dataset_split": split,
+                        "tackle_x_rel_pred": preds[:, 0].round(2),
+                        "tackle_y_rel_pred": preds[:, 1].round(2),
+                    },
+                    schema_overrides={"mirrored": bool},
+                ),
+                on=["gameId", "playId", "mirrored"],
+                how="inner",
+            )
+            .with_columns(
+                tackle_x_rel_pred=pl.col("tackle_x_rel_pred").round(1),
+                tackle_y_rel_pred=pl.col("tackle_y_rel_pred").round(1),
+                tackle_x_pred=(pl.col("tackle_x_rel_pred") + pl.col("play_origin_x")).round(1),
+                tackle_y_pred=(pl.col("tackle_y_rel_pred") + pl.col("play_origin_y")).round(1),
+            )
+            .with_columns(**{k: pl.lit(v) for k, v in model.hparams.items()})
         )
 
         assert pred_df.shape[0] == len(dataset)
@@ -85,12 +88,11 @@ def train_model(
     num_layers,
     learning_rate,
     dropout,
-    advanced=False,
     device=0,
     dbg_run=False,
 ):
-    train_ds: BDB2024_Dataset = load_datasets(model_type, advanced, split="test")
-    val_ds: BDB2024_Dataset = load_datasets(model_type, advanced, split="val")
+    train_ds: BDB2024_Dataset = load_datasets(model_type, split="test")
+    val_ds: BDB2024_Dataset = load_datasets(model_type, split="val")
 
     # convert to dataloaders for model fit
     train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=30)
@@ -104,10 +106,9 @@ def train_model(
         num_layers=num_layers,
         learning_rate=learning_rate,
         dropout=dropout,
-        advanced=advanced,
     )
 
-    devices = [device] if device >= 0 else [0, 1] # if device is specified, use it, otherwise pick 1 gpu to use
+    devices = [device] if device >= 0 else [0, 1]  # if device is specified, use it, otherwise pick 1 gpu to use
     if dbg_run:
         # debug run
         dbg_trainer = Trainer(
@@ -123,7 +124,7 @@ def train_model(
 
     logger = TensorBoardLogger(
         save_dir=MODELS_PATH,
-        name=f"{model_type}{'_advanced' if advanced else ''}",
+        name=f"{model_type}",
         log_graph=False,
         default_hp_metric=False,
         version=f"B{batch_size}_H{hidden_dim}_L{num_layers}_LR{learning_rate:.0e}_D{dropout}",
@@ -156,10 +157,10 @@ def train_model(
 
 
 def main(args):
-    batch_sizes = [512, 256, 128]
+    batch_sizes = [256]
     lrs = [1e-4]
-    hidden_dims = [64, 128, 256, 512]
-    num_layers = [1, 2, 4, 8]
+    hidden_dims = [32, 128, 512]
+    num_layers = [1, 2, 4, 8, 16]
 
     # create gridsearch iterable
     gridsearch = list(product(batch_sizes, lrs, hidden_dims, num_layers))
@@ -177,7 +178,6 @@ def main(args):
             num_layers=L,
             learning_rate=LR,
             dropout=0.3,
-            advanced=args.advanced,
             device=args.device,
         )
 
@@ -187,6 +187,5 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=int, default=-1)
     parser.add_argument("--hparam_search_iters", type=int, default=-1)
     parser.add_argument("--model_type", type=str, default="transformer")
-    parser.add_argument("--advanced", action="store_true")
     args = parser.parse_args()
     main(args)

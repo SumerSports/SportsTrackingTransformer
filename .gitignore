@@ -9,3 +9,4 @@ wheels/
 # venv
 .venv
 /lines
+src/sandbox.ipynb
