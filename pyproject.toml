@@ -1,56 +1,24 @@
 [project]
-name = "bigdatabowltransformerdemo"
+name = "sports-tracking-transformer"
 version = "0.1.0"
-description = "Demoing a generalizable model architecture for sports spacial data"
-authors = [
-    { name = "Udit Ranasaria", email = "udit.ranasaria@sumersports.com" },
-    { name = "Pavel Vabishchevich", email = "pavel.vabishchevich@sumersports.com" },
-]
-dependencies = [
-    "torch>=2.3.0",
-    "polars[numpy,pandas,plot,pyarrow]>=0.20.23",
-    "lightning>=2.2.4",
-    "tensorboard>=2.16.2",
-    "dvc[azure]>=3.50.1",
-    "kaggle>=1.6.12",
-    "tqdm>=4.66.3",
-    "pandarallel>=1.6.5",
-    "tensorboardx>=2.6.2.2",
-    "torch-tb-profiler>=0.4.3",
-    "seaborn>=0.13.2",
-    "plotly>=5.22.0",
-]
+description = "Demo repository showcasing Transformer model architecture for sports tracking data"
 readme = "README.md"
-requires-python = ">= 3.8"
-
-[project.scripts]
-"bigdatabowltransformerdemo" = "bigdatabowltransformerdemo:main"
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.rye]
-managed = true
-virtual = true
-dev-dependencies = [
-    "ruff>=0.4.2",
-    "uv>=0.1.39",
-    "ipykernel>=6.29.4",
-    "nbformat>=5.10.4",
+requires-python = ">=3.12"
+dependencies = [
+    "torch>=2.4.0",
+    "polars[numpy,pandas,plot,pyarrow,style]>=1.5.0",
+    "lightning>=2.4.0",
+    "tensorboardx>=2.6.2.2",
+    "dvc>=3.54.1",
+    "kaggle>=1.6.17",
+    "tqdm>=4.66.5",
+    "ipykernel>=6.29.5",
+    "ruff>=0.6.3",
 ]
-
-[tool.hatch.metadata]
-allow-direct-references = true
-
-[tool.hatch.build.targets.wheel]
-packages = ["src"]
 
 [tool.ruff]
 line-length = 120
 indent-width = 4
-
-exclude = [".pynb", ".ipynb_checkpoints"]
 
 [tool.ruff.lint]
 select = [
@@ -70,3 +38,6 @@ select = [
 # ignore = ["E203", "E266", "E501", "W503", "F403", "F401"]
 # https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
 ignore = ["W191", "E111", "E266", "E114", "E117", "E741"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 120

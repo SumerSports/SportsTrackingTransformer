@@ -1,6 +1,5 @@
-/nfl-big-data-bowl-2024.zip
-/bdb_2024
-/split_prepped_data
-/datasets
-/models
-/best_models
+# Ignore everything in this directory
+**/*
+
+# But don't ignore these
+!best_models/**

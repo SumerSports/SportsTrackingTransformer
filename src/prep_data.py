@@ -205,7 +205,7 @@ def split_train_test_val(tracking_df: pl.DataFrame, target_df: pl.DataFrame) -> 
         f"{train_tracking_df.n_unique(['gameId', 'playId', 'mirrored', "frameId"])} frames",
     )
 
-    test_ids = test_val_ids.sample(fraction=0.3, seed=42)  # roughly 70-20-10 split
+    test_ids = test_val_ids.sample(fraction=0.5, seed=42)  # 70-15-15 split
     test_tracking_df = tracking_df.join(test_ids, on=["gameId", "playId"], how="inner")
     test_tgt_df = target_df.join(test_ids, on=["gameId", "playId"], how="inner")
     print(

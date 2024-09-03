@@ -1,3 +1,4 @@
+import random
 from argparse import ArgumentParser
 from itertools import product
 from pathlib import Path
@@ -17,12 +18,14 @@ MODELS_PATH = Path("data/models")
 MODELS_PATH.mkdir(exist_ok=True)
 
 
-def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None) -> pl.DataFrame:
+def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None, devices=1) -> pl.DataFrame:
     """
     Have to provide one of model or ckpt_path
     """
     if model is None:
         model = LitModel.load_from_checkpoint(ckpt_path)
+    if isinstance(devices, list):
+        assert len(devices) == 1, "Only one device should be used for prediction"
 
     train_ds: BDB2024_Dataset = load_datasets(model.model_type, model.advanced, split="train")
     val_ds: BDB2024_Dataset = load_datasets(model.model_type, model.advanced, split="val")
@@ -35,7 +38,7 @@ def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None) -> pl.Da
     }
     pred_dfs = []
     for split, dataloader in dataloaders.items():
-        pred_trainer = Trainer(devices=1, logger=False, enable_model_summary=False)
+        pred_trainer = Trainer(devices=devices, logger=False, enable_model_summary=False)
         preds = pred_trainer.predict(model, dataloaders=dataloader, ckpt_path=ckpt_path)
         preds: np.ndarray = torch.concat(preds, dim=0).cpu().numpy()
 
@@ -90,7 +93,7 @@ def train_model(
     val_ds: BDB2024_Dataset = load_datasets(model_type, advanced, split="val")
 
     # convert to dataloaders for model fit
-    train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=100)
+    train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=30)
     val_dataloader = DataLoader(val_ds, batch_size=1024, shuffle=False, pin_memory=True, num_workers=30)
 
     # feature_len = train_ds[0][0].shape[-1]
@@ -104,7 +107,7 @@ def train_model(
         advanced=advanced,
     )
 
-    devices = [device] if device >= 0 else 1  # if device is specified, use it, otherwise find 1 available GPU
+    devices = [device] if device >= 0 else [0, 1] # if device is specified, use it, otherwise pick 1 gpu to use
     if dbg_run:
         # debug run
         dbg_trainer = Trainer(
@@ -126,7 +129,7 @@ def train_model(
         version=f"B{batch_size}_H{hidden_dim}_L{num_layers}_LR{learning_rate:.0e}_D{dropout}",
     )
     trainer = Trainer(
-        max_epochs=100,
+        max_epochs=200,
         accelerator="gpu",
         profiler=None,
         logger=logger,
@@ -146,23 +149,27 @@ def train_model(
 
     # record best model preds
     best_ckpt_path = Path(trainer.checkpoint_callback.best_model_path)
-    preds_df = predict_model_as_df(lit_model, best_ckpt_path)
+    preds_df = predict_model_as_df(lit_model, best_ckpt_path, devices[:1])
     preds_df.write_parquet(best_ckpt_path.with_suffix(".results.parquet"))
 
     return lit_model
 
 
 def main(args):
-    batch_sizes = [32]
+    batch_sizes = [512, 256, 128]
     lrs = [1e-4]
     hidden_dims = [64, 128, 256, 512]
-    num_layers = [2, 4, 6]
+    num_layers = [1, 2, 4, 8]
 
     # create gridsearch iterable
-    gridsearch = product(batch_sizes, lrs, hidden_dims, num_layers)
-    gridsearch_len = len(batch_sizes) * len(lrs) * len(hidden_dims) * len(num_layers)
+    gridsearch = list(product(batch_sizes, lrs, hidden_dims, num_layers))
+    random.seed(str(args))
+    random.shuffle(gridsearch)
+    if args.hparam_search_iters > 0:
+        # random search
+        gridsearch = gridsearch[: args.hparam_search_iters]
 
-    for B, LR, H, L in tqdm(gridsearch, desc="Hyperparam Gridsearch", total=gridsearch_len):
+    for B, LR, H, L in tqdm(gridsearch, desc="Hyperparam Gridsearch"):
         train_model(
             model_type=args.model_type,
             batch_size=B,
@@ -178,6 +185,7 @@ def main(args):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--device", type=int, default=-1)
+    parser.add_argument("--hparam_search_iters", type=int, default=-1)
     parser.add_argument("--model_type", type=str, default="transformer")
     parser.add_argument("--advanced", action="store_true")
     args = parser.parse_args()

@@ -1,5 +1,8 @@
 {
     "python.analysis.extraPaths": [
         "./src"
-    ]
+    ],
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "notebook.defaultFormatter": "charliermarsh.ruff",
+    "ruff.lineLength": null
 }
