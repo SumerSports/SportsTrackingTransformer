@@ -1,3 +1,19 @@
+"""
+Dataset Module for NFL Big Data Bowl 2024
+
+This module defines the BDB2024_Dataset class, which is used to load and preprocess
+data for training machine learning models. It includes functionality for both
+'transformer' and 'zoo' model types.
+
+Classes:
+    BDB2024_Dataset: Custom dataset class for NFL tracking data
+
+Functions:
+    load_datasets: Load preprocessed datasets for a specific model type and data split
+    main: Main execution function for creating and saving datasets
+
+"""
+
 import multiprocessing as mp
 import pickle
 import time
@@ -11,6 +27,21 @@ from tqdm import tqdm
 
 
 class BDB2024_Dataset(Dataset):
+    """
+    Custom dataset class for NFL tracking data.
+
+    This class preprocesses and stores NFL tracking data for use in machine learning models.
+    It supports both 'transformer' and 'zoo' model types.
+
+    Attributes:
+        model_type (str): Type of model ('transformer' or 'zoo')
+        keys (list): List of unique identifiers for each data point
+        feature_df_partition (pd.DataFrame): Preprocessed feature data
+        tgt_df_partition (pd.DataFrame): Preprocessed target data
+        tgt_arrays (dict): Precomputed target arrays
+        feature_arrays (dict): Precomputed feature arrays
+    """
+
     def __init__(
         self,
         model_type: str,
@@ -21,12 +52,12 @@ class BDB2024_Dataset(Dataset):
         Initialize the dataset.
 
         Args:
-            model_type (str): Type of model ('transformer' or 'zoo').
-            feature_df (pl.DataFrame): DataFrame containing feature data.
-            tgt_df (pl.DataFrame): DataFrame containing target data.
+            model_type (str): Type of model ('transformer' or 'zoo')
+            feature_df (pl.DataFrame): DataFrame containing feature data
+            tgt_df (pl.DataFrame): DataFrame containing target data
 
         Raises:
-            ValueError: If an invalid model_type is provided.
+            ValueError: If an invalid model_type is provided
         """
         if model_type not in ["transformer", "zoo"]:
             raise ValueError("model_type must be either 'transformer' or 'zoo'")
@@ -62,10 +93,10 @@ class BDB2024_Dataset(Dataset):
         Process a single key to generate target and feature arrays.
 
         Args:
-            key (Tuple): Key identifying a specific data point.
+            key (tuple): Key identifying a specific data point
 
         Returns:
-            Tuple[Tuple, np.ndarray, np.ndarray]: Processed key, target array, and feature array.
+            tuple[tuple, np.ndarray, np.ndarray]: Processed key, target array, and feature array
         """
         tgt_array = self.transform_target_df(self.tgt_df_partition.loc[key[:-1]])
         feature_array = self.transform_input_frame_df(self.feature_df_partition.loc[key])
@@ -76,7 +107,7 @@ class BDB2024_Dataset(Dataset):
         Get the length of the dataset.
 
         Returns:
-            int: Number of samples in the dataset.
+            int: Number of samples in the dataset
         """
         return len(self.keys)
 
@@ -85,13 +116,13 @@ class BDB2024_Dataset(Dataset):
         Get a single item from the dataset.
 
         Args:
-            idx (int): Index of the item to retrieve.
+            idx (int): Index of the item to retrieve
 
         Returns:
-            Tuple[np.ndarray, np.ndarray]: Feature array and target array for the specified index.
+            tuple[np.ndarray, np.ndarray]: Feature array and target array for the specified index
 
         Raises:
-            IndexError: If the index is out of range.
+            IndexError: If the index is out of range
         """
         if idx < 0 or idx >= len(self):
             raise IndexError("Index out of range")
@@ -103,13 +134,13 @@ class BDB2024_Dataset(Dataset):
         Transform input frame DataFrame to numpy array based on model type.
 
         Args:
-            frame_df (pd.DataFrame): Input frame DataFrame.
+            frame_df (pd.DataFrame): Input frame DataFrame
 
         Returns:
-            np.ndarray: Transformed input features.
+            np.ndarray: Transformed input features
 
         Raises:
-            ValueError: If an unknown model type is specified.
+            ValueError: If an unknown model type is specified
         """
         if self.model_type == "transformer":
             return self.transformer_transform_input_frame_df(frame_df)
@@ -123,13 +154,13 @@ class BDB2024_Dataset(Dataset):
         Transform target DataFrame to numpy array.
 
         Args:
-            tgt_df (pd.DataFrame): Target DataFrame.
+            tgt_df (pd.DataFrame): Target DataFrame
 
         Returns:
-            np.ndarray: Transformed target values.
+            np.ndarray: Transformed target values
 
         Raises:
-            AssertionError: If the output shape is not as expected.
+            AssertionError: If the output shape is not as expected
         """
         y = tgt_df[["tackle_x_rel", "tackle_y_rel"]].to_numpy(dtype=np.float32).squeeze()
         assert y.shape == (2,), f"Expected shape (2,), got {y.shape}"
@@ -140,13 +171,13 @@ class BDB2024_Dataset(Dataset):
         Transform input frame DataFrame for transformer model.
 
         Args:
-            frame_df (pd.DataFrame): Input frame DataFrame.
+            frame_df (pd.DataFrame): Input frame DataFrame
 
         Returns:
-            np.ndarray: Transformed input features for transformer model.
+            np.ndarray: Transformed input features for transformer model
 
         Raises:
-            AssertionError: If the output shape is not as expected.
+            AssertionError: If the output shape is not as expected
         """
         features = ["x_rel", "y_rel", "vx", "vy", "side", "is_ball_carrier"]
         x = frame_df[features].to_numpy(dtype=np.float32)
@@ -158,13 +189,13 @@ class BDB2024_Dataset(Dataset):
         Transform input frame DataFrame for zoo model.
 
         Args:
-            frame_df (pd.DataFrame): Input frame DataFrame.
+            frame_df (pd.DataFrame): Input frame DataFrame
 
         Returns:
-            np.ndarray: Transformed input features for zoo model.
+            np.ndarray: Transformed input features for zoo model
 
         Raises:
-            AssertionError: If the output shape is not as expected.
+            AssertionError: If the output shape is not as expected
         """
         # Isolate offensive and defensive players
         ball_carrier = frame_df[frame_df["is_ball_carrier"] == 1]
@@ -210,15 +241,15 @@ def load_datasets(model_type: str, split: str) -> BDB2024_Dataset:
     Load datasets for a specific model type and data split.
 
     Args:
-        model_type (str): Type of model ('transformer' or 'zoo').
-        split (str): Data split ('train', 'val', or 'test').
+        model_type (str): Type of model ('transformer' or 'zoo')
+        split (str): Data split ('train', 'val', or 'test')
 
     Returns:
-        BDB2024_Dataset: Loaded dataset for the specified model type and split.
+        BDB2024_Dataset: Loaded dataset for the specified model type and split
 
     Raises:
-        ValueError: If an unknown split is specified.
-        FileNotFoundError: If the dataset file is not found.
+        ValueError: If an unknown split is specified
+        FileNotFoundError: If the dataset file is not found
     """
     ds_dir = Path("data/datasets") / model_type
     file_path = ds_dir / f"{split}_dataset.pkl"
