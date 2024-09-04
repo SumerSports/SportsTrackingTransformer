@@ -84,7 +84,7 @@ def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None, devices=
 def train_model(
     model_type,
     batch_size,
-    hidden_dim,
+    model_dim,
     num_layers,
     learning_rate,
     dropout,
@@ -102,7 +102,7 @@ def train_model(
     lit_model = LitModel(
         model_type,
         batch_size=batch_size,
-        hidden_dim=hidden_dim,
+        model_dim=model_dim,
         num_layers=num_layers,
         learning_rate=learning_rate,
         dropout=dropout,
@@ -127,7 +127,7 @@ def train_model(
         name=f"{model_type}",
         log_graph=False,
         default_hp_metric=False,
-        version=f"B{batch_size}_H{hidden_dim}_L{num_layers}_LR{learning_rate:.0e}_D{dropout}",
+        version=f"B{batch_size}_M{model_dim}_L{num_layers}_LR{learning_rate:.0e}_D{dropout}",
     )
     trainer = Trainer(
         max_epochs=200,
@@ -158,12 +158,12 @@ def train_model(
 
 def main(args):
     batch_sizes = [256]
-    lrs = [1e-4]
-    hidden_dims = [32, 128, 512]
-    num_layers = [1, 2, 4, 8, 16]
+    lrs = [1e-4]  # , 5e-5, 1e-5]
+    model_dims = [32, 128, 512, 2048]
+    num_layers = [1, 2, 4, 8]
 
     # create gridsearch iterable
-    gridsearch = list(product(batch_sizes, lrs, hidden_dims, num_layers))
+    gridsearch = list(product(batch_sizes, lrs, model_dims, num_layers))
     random.seed(str(args))
     random.shuffle(gridsearch)
     if args.hparam_search_iters > 0:
@@ -174,7 +174,7 @@ def main(args):
         train_model(
             model_type=args.model_type,
             batch_size=B,
-            hidden_dim=H,
+            model_dim=H,
             num_layers=L,
             learning_rate=LR,
             dropout=0.3,
