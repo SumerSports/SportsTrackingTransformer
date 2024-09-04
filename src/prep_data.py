@@ -1,3 +1,25 @@
+"""
+Data Preparation Module for NFL Big Data Bowl 2024
+
+This module processes raw NFL tracking data to prepare it for machine learning models.
+It includes functions for loading, cleaning, and transforming the data, as well as
+splitting it into train, validation, and test sets.
+
+Functions:
+    get_players_df: Load and preprocess player data
+    get_plays_df: Load and preprocess play data
+    get_tracking_df: Load and preprocess tracking data
+    add_features_to_tracking_df: Add derived features to tracking data
+    convert_tracking_to_cartesian: Convert polar coordinates to Cartesian
+    standardize_tracking_directions: Standardize play directions
+    augment_mirror_tracking: Augment data by mirroring the field
+    add_relative_positions: Add relative position features
+    get_tackle_loc_target_df: Generate target dataframe for tackle location prediction
+    split_train_test_val: Split data into train, validation, and test sets
+    main: Main execution function
+
+"""
+
 from pathlib import Path
 
 import polars as pl
@@ -6,9 +28,15 @@ INPUT_DATA_DIR = Path("data/bdb_2024/")
 
 
 def get_players_df() -> pl.DataFrame:
+    """
+    Load player-level data and preprocesses features.
+
+    Returns:
+        pl.DataFrame: Preprocessed player data with additional features.
+    """
     return (
         pl.read_csv(INPUT_DATA_DIR / "players.csv", null_values=["NA", "nan", "N/A", "NaN", ""])
-        .with_columns(  # if time, we can use height/weight as features as well
+        .with_columns(
             height_inches=(
                 pl.col("height").str.split("-").map_elements(lambda s: int(s[0]) * 12 + int(s[1]), return_dtype=int)
             )
@@ -21,6 +49,12 @@ def get_players_df() -> pl.DataFrame:
 
 
 def get_plays_df() -> pl.DataFrame:
+    """
+    Load play-level data and preprocesses features.
+
+    Returns:
+        pl.DataFrame: Preprocessed play data with additional features.
+    """
     return pl.read_csv(INPUT_DATA_DIR / "plays.csv", null_values=["NA", "nan", "N/A", "NaN", ""]).with_columns(
         distanceToGoal=(
             pl.when(pl.col("possessionTeam") == pl.col("yardlineSide"))
@@ -31,6 +65,12 @@ def get_plays_df() -> pl.DataFrame:
 
 
 def get_tracking_df() -> pl.DataFrame:
+    """
+    Load tracking data and preprocesses features. Notably, exclude rows representing the football's movement.
+
+    Returns:
+        pl.DataFrame: Preprocessed tracking data with additional features.
+    """
     # don't include football rows for this project
     return pl.read_csv(INPUT_DATA_DIR / "tracking_week_*.csv", null_values=["NA", "nan", "N/A", "NaN", ""]).filter(
         pl.col("displayName") != "football"
@@ -42,21 +82,30 @@ def add_features_to_tracking_df(
     players_df: pl.DataFrame,
     plays_df: pl.DataFrame,
 ) -> pl.DataFrame:
+    """
+    Consolidates play and player level data into the tracking data.
+
+    Args:
+        tracking_df (pl.DataFrame): Tracking data
+        players_df (pl.DataFrame): Player data
+        plays_df (pl.DataFrame): Play data
+
+    Returns:
+        pl.DataFrame: Tracking data with additional features.
+    """
     # add `is_ball_carrier`, `team_indicator`, and other features to tracking data
     og_len = len(tracking_df)
     tracking_df = (
         tracking_df.join(
             plays_df.select(
-                [
-                    "gameId",
-                    "playId",
-                    "ballCarrierId",
-                    "possessionTeam",
-                    "down",
-                    "yardsToGo",
-                    "distanceToGoal",
-                    "playResult",
-                ]
+                "gameId",
+                "playId",
+                "ballCarrierId",
+                "possessionTeam",
+                "down",
+                "yardsToGo",
+                "distanceToGoal",
+                "playResult",
             ),
             on=["gameId", "playId"],
             how="inner",
@@ -81,6 +130,15 @@ def add_features_to_tracking_df(
 
 
 def convert_tracking_to_cartesian(tracking_df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Convert polar coordinates to Unit-circle Cartesian format.
+
+    Args:
+        tracking_df (pl.DataFrame): Tracking data
+
+    Returns:
+        pl.DataFrame: Tracking data with Cartesian coordinates.
+    """
     return (
         tracking_df.with_columns(
             dir=((pl.col("dir") - 90) * -1) % 360,
@@ -97,6 +155,15 @@ def convert_tracking_to_cartesian(tracking_df: pl.DataFrame) -> pl.DataFrame:
 
 
 def standardize_tracking_directions(tracking_df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Standardize play directions to always moving left to right.
+
+    Args:
+        tracking_df (pl.DataFrame): Tracking data
+
+    Returns:
+        pl.DataFrame: Tracking data with standardized directions.
+    """
     return tracking_df.with_columns(
         x=pl.when(pl.col("playDirection") == "right").then(pl.col("x")).otherwise(120 - pl.col("x")),
         y=pl.when(pl.col("playDirection") == "right").then(pl.col("y")).otherwise(53.3 - pl.col("y")),
@@ -108,10 +175,17 @@ def standardize_tracking_directions(tracking_df: pl.DataFrame) -> pl.DataFrame:
 
 
 def augment_mirror_tracking(tracking_df: pl.DataFrame) -> pl.DataFrame:
-    # Augment data by mirroring the field (assuming all plays are moving to right)
-    # There are arguments to not do this (e.g. most QBs are right-handed).
-    # But I think more data is more important
+    """
+    Augment data by mirroring the field assuming all plays are moving right.
+    There are arguments to not do this as football isn't perfectly symmetric (e.g. most QBs are right-handed) but
+    tackling is mostly symmetrical and for the sake of this demo I think more data is more important.
 
+    Args:
+        tracking_df (pl.DataFrame): Tracking data
+
+    Returns:
+        pl.DataFrame: Augmented tracking data.
+    """
     og_len = len(tracking_df)
 
     mirrored_tracking_df = tracking_df.clone().with_columns(
@@ -135,6 +209,15 @@ def augment_mirror_tracking(tracking_df: pl.DataFrame) -> pl.DataFrame:
 
 
 def get_tackle_loc_target_df(tracking_df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Generate target dataframe for tackle location prediction.
+
+    Args:
+        tracking_df (pl.DataFrame): Tracking data
+
+    Returns:
+        tuple: Tuple containing tackle location target dataframe and filtered tracking data.
+    """
     # generate per-play target dataframe
     TACKLE_EVENT_ENUM = {v: k for k, v in enumerate(["tackle", "out_of_bounds", "touchdown", "qb_slide", "fumble"])}
 
@@ -156,8 +239,8 @@ def get_tackle_loc_target_df(tracking_df: pl.DataFrame) -> pl.DataFrame:
                 "y",
                 "x_rel",
                 "y_rel",
-                "play_origin_x",
-                "play_origin_y",
+                "anchor_x",
+                "anchor_y",
                 "playResult",
             ]
         )
@@ -189,6 +272,18 @@ def get_tackle_loc_target_df(tracking_df: pl.DataFrame) -> pl.DataFrame:
 
 
 def split_train_test_val(tracking_df: pl.DataFrame, target_df: pl.DataFrame) -> dict[str, pl.DataFrame]:
+    """
+    Split data into train, validation, and test sets.
+    Split is 70-15-15 for train-test-val respectively. Notably, we split at the play levle and not frame level.
+    This ensures no target contamination between splits.
+
+    Args:
+        tracking_df (pl.DataFrame): Tracking data
+        target_df (pl.DataFrame): Target data
+
+    Returns:
+        dict: Dictionary containing train, validation, and test dataframes.
+    """
     tracking_df = tracking_df.sort(["gameId", "playId", "mirrored", "frameId"])
     target_df = target_df.sort(["gameId", "playId", "mirrored"])
 
@@ -232,29 +327,52 @@ def split_train_test_val(tracking_df: pl.DataFrame, target_df: pl.DataFrame) -> 
 
 
 def add_relative_positions(tracking_df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Normalize x, y position against an anchor point of the ball carrier's location.
+
+    This is not done for the purposes of defining a player ordering, as both The Zoo and Transformer are player-order
+    invariant models. This is done primarily for standardizing the data distribution and making frames look more alike
+    each other.
+
+    Args:
+        tracking_df (pl.DataFrame): Tracking data
+
+    Returns:
+        pl.DataFrame: Tracking data with relative position features.
+    """
     return (
         tracking_df.sort("frameId")
         # x, y, having wide distribution of values is bad for training
         # use ball-carrier position at first frame as "origin" for relative positions
         # this should make each frame's feature look more standardized to a model too
         .with_columns(
-            play_origin_x=pl.col("x")
+            anchor_x=pl.col("x")
             .filter(pl.col("is_ball_carrier") == 1)
             .first()
-            .over(["gameId", "playId", "mirrored"]),
-            play_origin_y=pl.col("y")
+            .over(["gameId", "playId", "frameId", "mirrored"]),
+            anchor_y=pl.col("y")
             .filter(pl.col("is_ball_carrier") == 1)
             .first()
-            .over(["gameId", "playId", "mirrored"]),
+            .over(["gameId", "playId", "frameId", "mirrored"]),
         )
         .with_columns(
-            x_rel=pl.col("x") - pl.col("play_origin_x"),
-            y_rel=pl.col("y") - pl.col("play_origin_y"),
+            x_rel=pl.col("x") - pl.col("anchor_x"),
+            y_rel=pl.col("y") - pl.col("anchor_y"),
         )
     )
 
 
 def main():
+    """
+    Main execution function for data preparation.
+
+    This function orchestrates the entire data preparation process, including:
+    1. Loading raw data
+    2. Adding features and transforming coordinates
+    3. Generating target variables
+    4. Splitting data into train, validation, and test sets
+    5. Saving processed data to parquet files
+    """
     players_df = get_players_df()
     plays_df = get_plays_df()
     tracking_df = get_tracking_df()

@@ -67,10 +67,10 @@ def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None, devices=
                 how="inner",
             )
             .with_columns(
-                tackle_x_rel_pred=pl.col("tackle_x_rel_pred").round(1),
-                tackle_y_rel_pred=pl.col("tackle_y_rel_pred").round(1),
-                tackle_x_pred=(pl.col("tackle_x_rel_pred") + pl.col("play_origin_x")).round(1),
-                tackle_y_pred=(pl.col("tackle_y_rel_pred") + pl.col("play_origin_y")).round(1),
+                tackle_x_rel_pred=pl.col("tackle_x_rel_pred").round(2),
+                tackle_y_rel_pred=pl.col("tackle_y_rel_pred").round(2),
+                tackle_x_pred=(pl.col("tackle_x_rel_pred") + pl.col("anchor_x")).round(2),
+                tackle_y_pred=(pl.col("tackle_y_rel_pred") + pl.col("anchor_y")).round(2),
             )
             .with_columns(**{k: pl.lit(v) for k, v in model.hparams.items()})
         )
@@ -159,7 +159,7 @@ def train_model(
 def main(args):
     batch_sizes = [256]
     lrs = [1e-4]  # , 5e-5, 1e-5]
-    model_dims = [32, 128, 512, 2048]
+    model_dims = [64, 256, 1024]
     num_layers = [1, 2, 4, 8]
 
     # create gridsearch iterable

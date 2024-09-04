@@ -8,6 +8,6 @@
     "ruff.configuration": "pyproject.toml",
     "editor.formatOnSave": true,
     "editor.formatOnPaste": true,
-    "python.languageServer": "Pylance",
+    "python.languageServer": "Default",
     "python.analysis.autoImportCompletions": true
 }

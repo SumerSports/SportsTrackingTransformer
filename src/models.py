@@ -1,3 +1,5 @@
+from typing import Any
+
 import torch
 from lightning import LightningModule
 from torch import Tensor, nn, squeeze
@@ -7,6 +9,10 @@ torch.set_float32_matmul_precision("medium")
 
 
 class SportsTransformerEncoder(nn.Module):
+    """
+    Transformer encoder for sports tracking data.
+    """
+
     def __init__(
         self,
         feature_len: int,
@@ -14,6 +20,15 @@ class SportsTransformerEncoder(nn.Module):
         num_layers: int = 2,
         dropout: float = 0.3,
     ):
+        """
+        Initialize the SportsTransformerEncoder.
+
+        Args:
+            feature_len (int): Number of input features.
+            model_dim (int): Dimension of the model.
+            num_layers (int): Number of transformer layers.
+            dropout (float): Dropout rate.
+        """
         super().__init__()
         dim_feedforward = model_dim * 4
         num_heads = max(1, model_dim // 32)
@@ -53,6 +68,15 @@ class SportsTransformerEncoder(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        """
+        Forward pass of the SportsTransformerEncoder.
+
+        Args:
+            x (Tensor): Input tensor of shape [B, P, F].
+
+        Returns:
+            Tensor: Output tensor of shape [B, 2].
+        """
         # x: [B: batch_size, P: # of players, F: feature_len]
         B, P, F = x.size()
 
@@ -65,13 +89,23 @@ class SportsTransformerEncoder(nn.Module):
         # assert x.shape == (B, 2)
         return x
 
-    def get_hyperparams(self):
+    def get_hyperparams(self) -> dict[str, Any]:
+        """
+        Get the hyperparameters of the model.
+
+        Returns:
+            Dict[str, Any]: Dictionary of hyperparameters.
+        """
         return self.hyperparams
 
 
 # Zoo Model code based on:
 # https://github.com/juancamilocampos/nfl-big-data-bowl-2020/blob/master/1st_place_zoo_solution_v2.ipynb
 class ZooSpacialEncoder(nn.Module):
+    """
+    Spatial encoder for the Zoo model architecture.
+    """
+
     def __init__(
         self,
         feature_len: int,
@@ -79,6 +113,15 @@ class ZooSpacialEncoder(nn.Module):
         num_layers: int = 3,
         dropout: float = 0.3,
     ):
+        """
+        Initialize the ZooSpacialEncoder.
+
+        Args:
+            feature_len (int): Number of input features.
+            model_dim (int): Dimension of the model.
+            num_layers (int): Number of convolutional layers.
+            dropout (float): Dropout rate.
+        """
         super().__init__()
         self.hyperparams = {
             "model_dim": model_dim,
@@ -132,6 +175,15 @@ class ZooSpacialEncoder(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        """
+        Forward pass of the ZooSpacialEncoder.
+
+        Args:
+            x (Tensor): Input tensor of shape [B, O, D, F].
+
+        Returns:
+            Tensor: Output tensor of shape [B, 2].
+        """
         # x: [B: batch_size, O: offense, D: defense, F: feature_len]
         B, O, D, F = x.size()  # B=Batch, O=Offense, D=Defense, F=Feature
 
@@ -153,11 +205,21 @@ class ZooSpacialEncoder(nn.Module):
         assert x.shape == (B, 2)
         return x
 
-    def get_hyperparams(self):
+    def get_hyperparams(self) -> dict[str, Any]:
+        """
+        Get the hyperparameters of the model.
+
+        Returns:
+            Dict[str, Any]: Dictionary of hyperparameters.
+        """
         return self.hyperparams
 
 
 class LitModel(LightningModule):
+    """
+    Lightning module for training and evaluating models.
+    """
+
     def __init__(
         self,
         model_type: str,
@@ -167,6 +229,17 @@ class LitModel(LightningModule):
         dropout: float = 0.1,
         learning_rate: float = 1e-3,
     ):
+        """
+        Initialize the LitModel.
+
+        Args:
+            model_type (str): Type of model ('transformer' or 'zoo').
+            batch_size (int): Batch size for training.
+            model_dim (int): Dimension of the model.
+            num_layers (int): Number of layers in the model.
+            dropout (float): Dropout rate.
+            learning_rate (float): Learning rate for optimization.
+        """
         super().__init__()
         self.model_type = model_type.lower()
         self.model_class = SportsTransformerEncoder if self.model_type == "transformer" else ZooSpacialEncoder
@@ -188,39 +261,99 @@ class LitModel(LightningModule):
         self.save_hyperparameters()
         self.loss_fn = torch.nn.SmoothL1Loss()
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        Forward pass of the model.
+
+        Args:
+            x (Tensor): Input tensor.
+
+        Returns:
+            Tensor: Output tensor.
+        """
         return self.model(x)
 
-    def training_step(self, batch, batch_idx):
-        # training_step defines the train loop.
+    def training_step(self, batch: tuple[Tensor, Tensor], batch_idx: int) -> Tensor:
+        """
+        Training step for the model.
+
+        Args:
+            batch (Tuple[Tensor, Tensor]): Batch of input and target tensors.
+            batch_idx (int): Index of the current batch.
+
+        Returns:
+            Tensor: Computed loss.
+        """
         x, y = batch
         y_hat = self.model(x)
         loss = self.loss_fn(y_hat, y)
         self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
         return loss
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch: tuple[Tensor, Tensor], batch_idx: int) -> Tensor:
+        """
+        Validation step for the model.
+
+        Args:
+            batch (Tuple[Tensor, Tensor]): Batch of input and target tensors.
+            batch_idx (int): Index of the current batch.
+
+        Returns:
+            Tensor: Computed loss.
+        """
         x, y = batch
         y_hat = self.model(x)
         loss = self.loss_fn(y_hat, y)
         self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
         return loss
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch: tuple[Tensor, Tensor], batch_idx: int) -> Tensor:
+        """
+        Test step for the model.
+
+        Args:
+            batch (Tuple[Tensor, Tensor]): Batch of input and target tensors.
+            batch_idx (int): Index of the current batch.
+
+        Returns:
+            Tensor: Computed loss.
+        """
         x, y = batch
         y_hat = self.model(x)
         loss = self.loss_fn(y_hat, y)
-        # don't log test loss, so we don't peek at the test set results while picking hyperparams
         return loss
 
-    def predict_step(self, batch, batch_idx, dataloader_idx=0):
+    def predict_step(self, batch: tuple[Tensor, Tensor], batch_idx: int, dataloader_idx: int = 0) -> Tensor:
+        """
+        Prediction step for the model.
+
+        Args:
+            batch (Tuple[Tensor, Tensor]): Batch of input and target tensors.
+            batch_idx (int): Index of the current batch.
+            dataloader_idx (int): Index of the dataloader.
+
+        Returns:
+            Tensor: Predicted output tensor.
+        """
         x, y = batch
         y_hat = self.model(x)
         return y_hat
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> AdamW:
+        """
+        Configure the optimizer for training.
+
+        Returns:
+            AdamW: Configured optimizer.
+        """
         optimizer = AdamW(self.parameters(), lr=self.learning_rate)
         return optimizer
 
-    def get_hyperparams(self):
+    def get_hyperparams(self) -> dict[str, Any]:
+        """
+        Get the hyperparameters of the model.
+
+        Returns:
+            Dict[str, Any]: Dictionary of hyperparameters.
+        """
         return self.hparams

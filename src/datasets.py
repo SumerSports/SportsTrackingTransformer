@@ -13,30 +13,41 @@ from tqdm import tqdm
 class BDB2024_Dataset(Dataset):
     def __init__(
         self,
-        model_type,
+        model_type: str,
         feature_df: pl.DataFrame,
         tgt_df: pl.DataFrame,
     ):
+        """
+        Initialize the dataset.
+
+        Args:
+            model_type (str): Type of model ('transformer' or 'zoo').
+            feature_df (pl.DataFrame): DataFrame containing feature data.
+            tgt_df (pl.DataFrame): DataFrame containing target data.
+
+        Raises:
+            ValueError: If an invalid model_type is provided.
+        """
+        if model_type not in ["transformer", "zoo"]:
+            raise ValueError("model_type must be either 'transformer' or 'zoo'")
+
         self.model_type = model_type
         self.keys = list(feature_df.select(["gameId", "playId", "mirrored", "frameId"]).unique().rows())
 
-        # convert to pandas form with index so we can quickly grab a set of rows by key
+        # Convert to pandas form with index for quick row retrieval
         self.feature_df_partition = (
             feature_df.to_pandas(use_pyarrow_extension_array=True)
             .set_index(["gameId", "playId", "mirrored", "frameId", "nflId"])
             .sort_index()
         )
         self.tgt_df_partition = (
-            tgt_df.to_pandas(use_pyarrow_extension_array=True)
-            # .partition_by(['gameId', 'playId', 'mirrored'], as_dict=True, maintain_order=False)
-            .set_index(["gameId", "playId", "mirrored"])
-            .sort_index()
+            tgt_df.to_pandas(use_pyarrow_extension_array=True).set_index(["gameId", "playId", "mirrored"]).sort_index()
         )
 
-        # precompute features and store in dicts
-        self.tgt_arrays = {}
-        self.feature_arrays = {}
-        with mp.Pool(processes=8) as pool:
+        # Precompute features and store in dicts
+        self.tgt_arrays: dict[tuple, np.ndarray] = {}
+        self.feature_arrays: dict[tuple, np.ndarray] = {}
+        with mp.Pool(processes=min(8, mp.cpu_count())) as pool:
             results = pool.map(
                 self.process_key,
                 tqdm(self.keys, desc="Pre-computing feature transforms", total=len(self.keys)),
@@ -46,22 +57,60 @@ class BDB2024_Dataset(Dataset):
                 self.tgt_arrays[key[:-1]] = tgt_array
                 self.feature_arrays[key] = feature_array
 
-    def process_key(self, key):
+    def process_key(self, key: tuple) -> tuple[tuple, np.ndarray, np.ndarray]:
+        """
+        Process a single key to generate target and feature arrays.
+
+        Args:
+            key (Tuple): Key identifying a specific data point.
+
+        Returns:
+            Tuple[Tuple, np.ndarray, np.ndarray]: Processed key, target array, and feature array.
+        """
         tgt_array = self.transform_target_df(self.tgt_df_partition.loc[key[:-1]])
         feature_array = self.transform_input_frame_df(self.feature_df_partition.loc[key])
-        return (key, tgt_array, feature_array)
+        return key, tgt_array, feature_array
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """
+        Get the length of the dataset.
+
+        Returns:
+            int: Number of samples in the dataset.
+        """
         return len(self.keys)
 
-    def __getitem__(self, idx) -> tuple[np.ndarray, np.ndarray]:
-        # convert idx to key and grab the precomputed arrays
+    def __getitem__(self, idx: int) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Get a single item from the dataset.
+
+        Args:
+            idx (int): Index of the item to retrieve.
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: Feature array and target array for the specified index.
+
+        Raises:
+            IndexError: If the index is out of range.
+        """
+        if idx < 0 or idx >= len(self):
+            raise IndexError("Index out of range")
         key = self.keys[idx]
         return self.feature_arrays[key], self.tgt_arrays[key[:-1]]
 
     def transform_input_frame_df(self, frame_df: pd.DataFrame) -> np.ndarray:
-        # needs to be implemented differently for each model architecture
-        # convert a frame_df to a numpy array
+        """
+        Transform input frame DataFrame to numpy array based on model type.
+
+        Args:
+            frame_df (pd.DataFrame): Input frame DataFrame.
+
+        Returns:
+            np.ndarray: Transformed input features.
+
+        Raises:
+            ValueError: If an unknown model type is specified.
+        """
         if self.model_type == "transformer":
             return self.transformer_transform_input_frame_df(frame_df)
         elif self.model_type == "zoo":
@@ -70,19 +119,53 @@ class BDB2024_Dataset(Dataset):
             raise ValueError(f"Unknown model type: {self.model_type}")
 
     def transform_target_df(self, tgt_df: pd.DataFrame) -> np.ndarray:
-        # should be same for all model architectures
+        """
+        Transform target DataFrame to numpy array.
+
+        Args:
+            tgt_df (pd.DataFrame): Target DataFrame.
+
+        Returns:
+            np.ndarray: Transformed target values.
+
+        Raises:
+            AssertionError: If the output shape is not as expected.
+        """
         y = tgt_df[["tackle_x_rel", "tackle_y_rel"]].to_numpy(dtype=np.float32).squeeze()
-        assert y.shape == (2,)
+        assert y.shape == (2,), f"Expected shape (2,), got {y.shape}"
         return y
 
     def transformer_transform_input_frame_df(self, frame_df: pd.DataFrame) -> np.ndarray:
-        features = ["x_rel", "y_rel", "vx", "vy", "side", "is_ball_carrier"]
+        """
+        Transform input frame DataFrame for transformer model.
 
+        Args:
+            frame_df (pd.DataFrame): Input frame DataFrame.
+
+        Returns:
+            np.ndarray: Transformed input features for transformer model.
+
+        Raises:
+            AssertionError: If the output shape is not as expected.
+        """
+        features = ["x_rel", "y_rel", "vx", "vy", "side", "is_ball_carrier"]
         x = frame_df[features].to_numpy(dtype=np.float32)
-        assert x.shape == (22, len(features))
+        assert x.shape == (22, len(features)), f"Expected shape (22, {len(features)}), got {x.shape}"
         return x
 
     def zoo_transform_input_frame_df(self, frame_df: pd.DataFrame) -> np.ndarray:
+        """
+        Transform input frame DataFrame for zoo model.
+
+        Args:
+            frame_df (pd.DataFrame): Input frame DataFrame.
+
+        Returns:
+            np.ndarray: Transformed input features for zoo model.
+
+        Raises:
+            AssertionError: If the output shape is not as expected.
+        """
         # Isolate offensive and defensive players
         ball_carrier = frame_df[frame_df["is_ball_carrier"] == 1]
         off_plyrs = frame_df[(frame_df["side"] == 1) & (frame_df["is_ball_carrier"] == 0)]
@@ -118,26 +201,39 @@ class BDB2024_Dataset(Dataset):
             axis=-1,
         )
 
-        assert x.shape == (10, 11, 10)
+        assert x.shape == (10, 11, 10), f"Expected shape (10, 11, 10), got {x.shape}"
         return x
 
 
 def load_datasets(model_type: str, split: str) -> BDB2024_Dataset:
+    """
+    Load datasets for a specific model type and data split.
+
+    Args:
+        model_type (str): Type of model ('transformer' or 'zoo').
+        split (str): Data split ('train', 'val', or 'test').
+
+    Returns:
+        BDB2024_Dataset: Loaded dataset for the specified model type and split.
+
+    Raises:
+        ValueError: If an unknown split is specified.
+        FileNotFoundError: If the dataset file is not found.
+    """
     ds_dir = Path("data/datasets") / model_type
-    if "train" in split:
-        with open(ds_dir / "train_dataset.pkl", "rb") as f:
-            return pickle.load(f)
-    elif "val" in split:
-        with open(ds_dir / "val_dataset.pkl", "rb") as f:
-            return pickle.load(f)
-    elif "test" in split:
-        with open(ds_dir / "test_dataset.pkl", "rb") as f:
-            return pickle.load(f)
-    else:
-        raise ValueError(f"Unknown split: {split}")
+    file_path = ds_dir / f"{split}_dataset.pkl"
+
+    if not file_path.exists():
+        raise FileNotFoundError(f"Dataset file not found: {file_path}")
+
+    with open(file_path, "rb") as f:
+        return pickle.load(f)
 
 
 def main():
+    """
+    Main function to create and save datasets for different model types and splits.
+    """
     PREPPED_DATA_DIR = Path("data/split_prepped_data/")
     DATASET_DIR = Path("data/datasets/")
     for split in ["test", "val", "train"]:
