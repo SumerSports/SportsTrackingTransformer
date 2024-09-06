@@ -20,6 +20,7 @@ Functions:
 
 """
 
+from argparse import ArgumentParser
 from pathlib import Path
 
 import polars as pl
@@ -216,14 +217,15 @@ def get_tackle_loc_target_df(tracking_df: pl.DataFrame) -> pl.DataFrame:
         tracking_df (pl.DataFrame): Tracking data
 
     Returns:
-        tuple: Tuple containing tackle location target dataframe and filtered tracking data.
+        tuple: tuple containing tackle location target dataframe and filtered tracking data.
     """
     # generate per-play target dataframe
-    TACKLE_EVENT_ENUM = {v: k for k, v in enumerate(["tackle", "out_of_bounds", "touchdown", "qb_slide", "fumble"])}
+    TACKLE_EVENTS = ["tackle", "out_of_bounds", "touchdown", "qb_slide", "fumble"]
 
-    tackle_loc_df = (
+    # get the tackle location for each play as the ball carrier's location at the frame of the tackle
+    play_tackle_loc_df = (
         tracking_df.sort("frameId")
-        .filter(pl.col("event").is_in(TACKLE_EVENT_ENUM.keys()) & (pl.col("is_ball_carrier") == 1))
+        .filter(pl.col("event").is_in(TACKLE_EVENTS) & (pl.col("is_ball_carrier") == 1))
         .group_by(["gameId", "playId", "mirrored"])
         .tail(1)
         .select(
@@ -237,10 +239,6 @@ def get_tackle_loc_target_df(tracking_df: pl.DataFrame) -> pl.DataFrame:
                 "event",
                 "x",
                 "y",
-                "x_rel",
-                "y_rel",
-                "anchor_x",
-                "anchor_y",
                 "playResult",
             ]
         )
@@ -252,19 +250,30 @@ def get_tackle_loc_target_df(tracking_df: pl.DataFrame) -> pl.DataFrame:
                 "event": "tackle_event",
                 "x": "tackle_x",
                 "y": "tackle_y",
-                "x_rel": "tackle_x_rel",
-                "y_rel": "tackle_y_rel",
             }
         )
-        .with_columns(
-            pl.col("tackle_event").replace(TACKLE_EVENT_ENUM).cast(int).alias("tackle_event_enum"),
+    )
+
+    # we need to convert into relative coordinates which involves comparing against the
+    # anchor point which is per frame
+    tackle_loc_df = (
+        play_tackle_loc_df.join(
+            tracking_df.select(["gameId", "playId", "mirrored", "frameId", "anchor_x", "anchor_y"]).unique(),
+            on=["gameId", "playId", "mirrored"],
+            how="inner",
+        ).with_columns(
+            tackle_x_rel=pl.col("tackle_x") - pl.col("anchor_x"),
+            tackle_y_rel=pl.col("tackle_y") - pl.col("anchor_y"),
         )
+        # .drop(["anchor_x", "anchor_y"])
     )
 
     # only keep plays in dataset that have a valid tackle location target
     og_play_count = len(tracking_df.select(["gameId", "playId"]).unique())
     tracking_df = tracking_df.join(
-        tackle_loc_df.select(["gameId", "playId", "mirrored"]), on=["gameId", "playId", "mirrored"], how="inner"
+        tackle_loc_df.select(["gameId", "playId", "mirrored"]).unique(),
+        on=["gameId", "playId", "mirrored"],
+        how="inner",
     )
     new_play_count = len(tracking_df.select(["gameId", "playId"]).unique())
     print(f"Lost {(og_play_count - new_play_count)/og_play_count:.3%} plays when joining with tackle_loc_df")
@@ -328,7 +337,7 @@ def split_train_test_val(tracking_df: pl.DataFrame, target_df: pl.DataFrame) -> 
 
 def add_relative_positions(tracking_df: pl.DataFrame) -> pl.DataFrame:
     """
-    Normalize x, y position against an anchor point of the ball carrier's location.
+    Normalize x, y position against an anchor point of the ball carrier's location at the first frame of the play.
 
     This is not done for the purposes of defining a player ordering, as both The Zoo and Transformer are player-order
     invariant models. This is done primarily for standardizing the data distribution and making frames look more alike
@@ -342,18 +351,10 @@ def add_relative_positions(tracking_df: pl.DataFrame) -> pl.DataFrame:
     """
     return (
         tracking_df.sort("frameId")
-        # x, y, having wide distribution of values is bad for training
-        # use ball-carrier position at first frame as "origin" for relative positions
-        # this should make each frame's feature look more standardized to a model too
+        # Use play-level anchor of ball carrier's location at first frame in the play
         .with_columns(
-            anchor_x=pl.col("x")
-            .filter(pl.col("is_ball_carrier") == 1)
-            .first()
-            .over(["gameId", "playId", "frameId", "mirrored"]),
-            anchor_y=pl.col("y")
-            .filter(pl.col("is_ball_carrier") == 1)
-            .first()
-            .over(["gameId", "playId", "frameId", "mirrored"]),
+            anchor_x=pl.col("x").filter(pl.col("is_ball_carrier") == 1).first().over(["gameId", "playId", "mirrored"]),
+            anchor_y=pl.col("y").filter(pl.col("is_ball_carrier") == 1).first().over(["gameId", "playId", "mirrored"]),
         )
         .with_columns(
             x_rel=pl.col("x") - pl.col("anchor_x"),
@@ -381,19 +382,18 @@ def main():
     tracking_df = convert_tracking_to_cartesian(tracking_df)
     tracking_df = standardize_tracking_directions(tracking_df)
     tracking_df = augment_mirror_tracking(tracking_df)
-    tracking_df = add_relative_positions(tracking_df)
 
-    tkl_loc_tgt_df, tracking_df = get_tackle_loc_target_df(tracking_df)
+    rel_tracking_df = add_relative_positions(tracking_df)
 
-    split_dfs = split_train_test_val(tracking_df, tkl_loc_tgt_df)
+    tkl_loc_tgt_df, rel_tracking_df = get_tackle_loc_target_df(rel_tracking_df)
+
+    split_dfs = split_train_test_val(rel_tracking_df, tkl_loc_tgt_df)
 
     out_dir = Path("data/split_prepped_data/")
     out_dir.mkdir(exist_ok=True, parents=True)
 
     for key, df in split_dfs.items():
-        sort_keys = (
-            ["gameId", "playId", "mirrored", "frameId"] if "features" in key else ["gameId", "playId", "mirrored"]
-        )
+        sort_keys = ["gameId", "playId", "mirrored", "frameId"]
         df.sort(sort_keys).write_parquet(out_dir / f"{key}.parquet")
 
 

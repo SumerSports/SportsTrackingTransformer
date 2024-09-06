@@ -19,14 +19,14 @@ stages:
     outs:
     - data/split_prepped_data/
 
-  precompute_datasets: # this might take an hour
+  precompute_datasets: # this might take an hour or 2
     cmd: uv run python src/datasets.py
     deps:
     - src/datasets.py
     - data/split_prepped_data/
     outs:
-    - data/datasets/transformer/
-    - data/datasets/zoo/
+    - data/datasets/:
+        persist: true
 
   train_zoo_models:
     cmd: uv run python src/train.py --model_type zoo --device 0

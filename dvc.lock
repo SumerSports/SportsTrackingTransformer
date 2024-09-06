@@ -30,34 +30,29 @@ stages:
       nfiles: 13
     - path: src/prep_data.py
       hash: md5
-      md5: 560ede4cb0a2d18ad7c9d349781e7acf
-      size: 10666
+      md5: 94f682a1aef91622bc7a1bdfca0e1bee
+      size: 14690
     outs:
     - path: data/split_prepped_data/
       hash: md5
-      md5: ecdf04427b9468b5868bb362de67b52f.dir
-      size: 1023268480
+      md5: 4b678a6cef636cd4b359ab7498186897.dir
+      size: 1023797370
       nfiles: 6
   precompute_datasets:
     cmd: uv run python src/datasets.py
     deps:
     - path: data/split_prepped_data/
       hash: md5
-      md5: ecdf04427b9468b5868bb362de67b52f.dir
-      size: 1023268480
+      md5: 4b678a6cef636cd4b359ab7498186897.dir
+      size: 1023797370
       nfiles: 6
     - path: src/datasets.py
       hash: md5
-      md5: e284041549f0d31c4ff89575ed30a72d
-      size: 6335
+      md5: 1cb7940a2d1f068b4c55f509df0cab56
+      size: 10137
     outs:
-    - path: data/datasets/transformer/
+    - path: data/datasets/
       hash: md5
-      md5: 791aa3f2c52487c0917750d462e5df56.dir
-      size: 6974412135
-      nfiles: 3
-    - path: data/datasets/zoo/
-      hash: md5
-      md5: f051441b8fc435720d0894097dc11307.dir
-      size: 11078357560
-      nfiles: 3
+      md5: 7e5c358b2cc96f0ef90feba4d4f319b1.dir
+      size: 36808213462
+      nfiles: 12

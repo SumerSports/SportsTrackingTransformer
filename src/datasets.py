@@ -25,6 +25,9 @@ import polars as pl
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
+PREPPED_DATA_DIR = Path("data/split_prepped_data/")
+DATASET_DIR = Path("data/datasets/")
+
 
 class BDB2024_Dataset(Dataset):
     """
@@ -72,7 +75,9 @@ class BDB2024_Dataset(Dataset):
             .sort_index()
         )
         self.tgt_df_partition = (
-            tgt_df.to_pandas(use_pyarrow_extension_array=True).set_index(["gameId", "playId", "mirrored"]).sort_index()
+            tgt_df.to_pandas(use_pyarrow_extension_array=True)
+            .set_index(["gameId", "playId", "mirrored", "frameId"])
+            .sort_index()
         )
 
         # Precompute features and store in dicts
@@ -85,7 +90,7 @@ class BDB2024_Dataset(Dataset):
             )
             # Unpack results
             for key, tgt_array, feature_array in results:
-                self.tgt_arrays[key[:-1]] = tgt_array
+                self.tgt_arrays[key] = tgt_array
                 self.feature_arrays[key] = feature_array
 
     def process_key(self, key: tuple) -> tuple[tuple, np.ndarray, np.ndarray]:
@@ -93,12 +98,12 @@ class BDB2024_Dataset(Dataset):
         Process a single key to generate target and feature arrays.
 
         Args:
-            key (tuple): Key identifying a specific data point
+            key (tuple): Key (gameId, playId, mirrored, frameId) identifying a specific data point
 
         Returns:
             tuple[tuple, np.ndarray, np.ndarray]: Processed key, target array, and feature array
         """
-        tgt_array = self.transform_target_df(self.tgt_df_partition.loc[key[:-1]])
+        tgt_array = self.transform_target_df(self.tgt_df_partition.loc[key])
         feature_array = self.transform_input_frame_df(self.feature_df_partition.loc[key])
         return key, tgt_array, feature_array
 
@@ -127,7 +132,7 @@ class BDB2024_Dataset(Dataset):
         if idx < 0 or idx >= len(self):
             raise IndexError("Index out of range")
         key = self.keys[idx]
-        return self.feature_arrays[key], self.tgt_arrays[key[:-1]]
+        return self.feature_arrays[key], self.tgt_arrays[key]
 
     def transform_input_frame_df(self, frame_df: pd.DataFrame) -> np.ndarray:
         """
@@ -251,7 +256,7 @@ def load_datasets(model_type: str, split: str) -> BDB2024_Dataset:
         ValueError: If an unknown split is specified
         FileNotFoundError: If the dataset file is not found
     """
-    ds_dir = Path("data/datasets") / model_type
+    ds_dir = DATASET_DIR / model_type
     file_path = ds_dir / f"{split}_dataset.pkl"
 
     if not file_path.exists():
@@ -265,16 +270,14 @@ def main():
     """
     Main function to create and save datasets for different model types and splits.
     """
-    PREPPED_DATA_DIR = Path("data/split_prepped_data/")
-    DATASET_DIR = Path("data/datasets/")
     for split in ["test", "val", "train"]:
         feature_df = pl.read_parquet(PREPPED_DATA_DIR / f"{split}_features.parquet")
         tgt_df = pl.read_parquet(PREPPED_DATA_DIR / f"{split}_targets.parquet")
         for model_type in ["zoo", "transformer"]:
-            print(f"Creating {model_type} {split} dataset...")
+            print(f"Creating dataset for {model_type=}, {split=}...")
             tic = time.time()
             dataset = BDB2024_Dataset(model_type, feature_df, tgt_df)
-            out_dir = DATASET_DIR / f"{model_type}"
+            out_dir = DATASET_DIR / model_type
             out_dir.mkdir(exist_ok=True, parents=True)
             with open(out_dir / f"{split}_dataset.pkl", "wb") as f:
                 pickle.dump(dataset, f)

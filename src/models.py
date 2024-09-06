@@ -1,3 +1,16 @@
+"""
+Model Architectures for NFL Big Data Bowl 2024 tackle prediction task
+
+This module defines neural network architectures for predicting tackle
+locations in NFL plays. It includes two main model types: SportsTransformer and
+TheZooArchitecture, along with a shared LightningModule wrapper for training.
+
+Classes:
+    SportsTransformer: Generalized Transformer-based model for sports tracking data
+    TheZooArchitecture: Baseline approach based on the winning solution of the NFL Big Data Bowl 2020
+    LitModel: LightningModule wrapper for shared training functionality
+"""
+
 from typing import Any
 
 import torch
@@ -8,9 +21,9 @@ from torch.optim import AdamW
 torch.set_float32_matmul_precision("medium")
 
 
-class SportsTransformerEncoder(nn.Module):
+class SportsTransformer(nn.Module):
     """
-    Transformer encoder for sports tracking data.
+    Transformer model architecture for processing sports tracking data.
     """
 
     def __init__(
@@ -21,17 +34,18 @@ class SportsTransformerEncoder(nn.Module):
         dropout: float = 0.3,
     ):
         """
-        Initialize the SportsTransformerEncoder.
+        Initialize the SportsTransformer.
 
         Args:
-            feature_len (int): Number of input features.
-            model_dim (int): Dimension of the model.
-            num_layers (int): Number of transformer layers.
-            dropout (float): Dropout rate.
+            feature_len (int): Number of input features per player.
+            model_dim (int): Dimension of the model's internal representations.
+            num_layers (int): Number of transformer encoder layers.
+            dropout (float): Dropout rate for regularization.
         """
         super().__init__()
         dim_feedforward = model_dim * 4
-        num_heads = max(1, model_dim // 32)
+        num_heads = min(16, max(1, model_dim // 32))
+
         self.hyperparams = {
             "model_dim": model_dim,
             "num_layers": num_layers,
@@ -39,8 +53,10 @@ class SportsTransformerEncoder(nn.Module):
             "dim_feedforward": dim_feedforward,
         }
 
+        # Normalize input features
         self.feature_norm_layer = nn.BatchNorm1d(feature_len)
 
+        # Embed input features to model dimension
         self.feature_embedding_layer = nn.Sequential(
             nn.Linear(feature_len, model_dim),
             nn.ReLU(),
@@ -48,6 +64,14 @@ class SportsTransformerEncoder(nn.Module):
             nn.Dropout(dropout),
         )
 
+        # Transformer Encoder
+        # This component applies multiple layers of self-attention and feed-forward networks
+        # to process player data in a permutation-equivariant manner.
+
+        # Key properties:
+        # 1. Player-order equivariance: The output maintains the same shape and player order as the input.
+        # 2. Contextual feature extraction: Transforms initial player features into rich, context-aware representations.
+        # 3. Inter-player relationships: Captures complex interactions between players across the field.
         self.transformer_encoder = nn.TransformerEncoder(
             nn.TransformerEncoderLayer(
                 d_model=model_dim,
@@ -58,52 +82,69 @@ class SportsTransformerEncoder(nn.Module):
             ),
             num_layers=num_layers,
         )
-        # encoded dim should be # of players x model_dim
-        # pool across player dim before decoding
+
+        # Pool across player dimension
+        # We pool because this task is a single value across all players, you don't need to pool for all tasks.
         self.player_pooling_layer = nn.AdaptiveAvgPool1d(1)
+
+        # Task-specific Decoder to predict tackle location.
+        # self.decoder = nn.Sequential(
+        #     nn.Linear(model_dim, model_dim // 4),
+        #     nn.ReLU(),
+        #     nn.Linear(model_dim // 4, 2),
+        # )
+
         self.decoder = nn.Sequential(
+            nn.Linear(model_dim, model_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
             nn.Linear(model_dim, model_dim // 4),
             nn.ReLU(),
+            nn.LayerNorm(model_dim // 4),
             nn.Linear(model_dim // 4, 2),
         )
 
     def forward(self, x: Tensor) -> Tensor:
         """
-        Forward pass of the SportsTransformerEncoder.
+        Forward pass of the SportsTransformer.
 
         Args:
-            x (Tensor): Input tensor of shape [B, P, F].
+            x (Tensor): Input tensor of shape [batch_size, num_players, feature_len].
 
         Returns:
-            Tensor: Output tensor of shape [B, 2].
+            Tensor: Predicted tackle location of shape [batch_size, 2].
         """
         # x: [B: batch_size, P: # of players, F: feature_len]
         B, P, F = x.size()
 
+        # Normalize features
         x = self.feature_norm_layer(x.permute(0, 2, 1)).permute(0, 2, 1)  # [B,P,F] -> [B,P,F]
-        x = self.feature_embedding_layer(x)  # [B,P,F] -> [B,P,H: model_dim]
-        x = self.transformer_encoder(x)  # [B,P,H] -> [B,P,H]
-        # pool over player dimension
-        x = squeeze(self.player_pooling_layer(x.permute(0, 2, 1)), -1)  # [B,H,P] -> [B,H]
-        x = self.decoder(x)  # [B,H] -> [B,2]
-        # assert x.shape == (B, 2)
+
+        # Embed features
+        x = self.feature_embedding_layer(x)  # [B,P,F] -> [B,P,M: model_dim]
+
+        # Apply transformer encoder
+        x = self.transformer_encoder(x)  # [B,P,M] -> [B,P,M]
+
+        # Pool over player dimension
+        x = squeeze(self.player_pooling_layer(x.permute(0, 2, 1)), -1)  # [B,M,P] -> [B,M]
+
+        # Decode to predict tackle location
+        x = self.decoder(x)  # [B,M] -> [B,2]
+
         return x
 
-    def get_hyperparams(self) -> dict[str, Any]:
-        """
-        Get the hyperparameters of the model.
 
-        Returns:
-            Dict[str, Any]: Dictionary of hyperparameters.
-        """
-        return self.hyperparams
-
-
-# Zoo Model code based on:
-# https://github.com/juancamilocampos/nfl-big-data-bowl-2020/blob/master/1st_place_zoo_solution_v2.ipynb
-class ZooSpacialEncoder(nn.Module):
+class TheZooArchitecture(nn.Module):
     """
-    Spatial encoder for the Zoo model architecture.
+    TheZooArchitecture represents a baseline model to compare against the SportsTransformer.
+    It was the winning solution for the 2020 Big Data Bowl designed to predict run game yardage gained with an
+    innovative (at the time) approach to solving player-equivariance problem. At a high level, the approach requires
+    generating a set of interaction vectors between each pair of players, applying feedforward layers to each
+    interaction embedding independently, and then pooling across interaction dimensions to get to a final output.
+
+    Zoo Model code based on:
+    https://github.com/juancamilocampos/nfl-big-data-bowl-2020/blob/master/1st_place_zoo_solution_v2.ipynb
     """
 
     def __init__(
@@ -114,10 +155,10 @@ class ZooSpacialEncoder(nn.Module):
         dropout: float = 0.3,
     ):
         """
-        Initialize the ZooSpacialEncoder.
+        Initialize the TheZooArchitecture.
 
         Args:
-            feature_len (int): Number of input features.
+            feature_len (int): Number of input features in each interaction vector.
             model_dim (int): Dimension of the model.
             num_layers (int): Number of convolutional layers.
             dropout (float): Dropout rate.
@@ -128,55 +169,64 @@ class ZooSpacialEncoder(nn.Module):
             "num_layers": num_layers,
         }
 
+        # Normalize input features
         self.feature_norm_layer = nn.BatchNorm2d(feature_len)
 
-        # expected input shape is [B, O=10, D=11, F]
+        # Embed input features to model dimension
         self.feature_embedding_layer = nn.Sequential(
             nn.Linear(feature_len, model_dim),
             nn.ReLU(),
             nn.LayerNorm(model_dim),
             nn.Dropout(dropout),
         )
-        # after embedding raw features, we will move features to a channel dimension [B, H, O=10, D=11]
-        # self.feature_norm_layer = nn.Sequential(
-        #     nn.BatchNorm2d(model_dim),
-        #     nn.Dropout(dropout),
-        # )
-        self.off_def_player_block = nn.Sequential(
+
+        # Feedforward Layer block 1 across all interaction vectors
+        # Notably, this "CNN" is just a hacky way to apply a Linear or Feedforward layer across all interaction vectors.
+        # It is not doing any convolution between neighboring players (as that would violate permutation equivariance).
+        self.ff_block1 = nn.Sequential(
             *[
-                nn.Conv2d(in_channels=model_dim, out_channels=model_dim, kernel_size=(1, 1), stride=(1, 1)),
-                nn.ReLU(),
+                nn.Sequential(
+                    nn.Conv2d(in_channels=model_dim, out_channels=model_dim, kernel_size=(1, 1), stride=(1, 1)),
+                    nn.ReLU(),
+                )
+                for _ in range(num_layers)
             ]
-            * num_layers,
         )
-        self.def_player_block = nn.Sequential(
+
+        # Feedforward Layer block 2 after pooling across offensive players
+        self.ff_block2 = nn.Sequential(
             *[
-                nn.Conv1d(in_channels=model_dim, out_channels=model_dim, kernel_size=1, stride=1),
-                nn.ReLU(),
-                nn.BatchNorm1d(model_dim),
+                nn.Sequential(
+                    nn.Conv1d(in_channels=model_dim, out_channels=model_dim, kernel_size=1, stride=1),
+                    nn.ReLU(),
+                    nn.BatchNorm1d(model_dim),
+                )
+                for _ in range(num_layers)
             ]
-            * num_layers,
         )
-        self.decoder = nn.Sequential(
-            # *[
-            #     nn.Linear(model_dim, model_dim),
-            #     nn.ReLU(),
-            #     nn.BatchNorm1d(model_dim),
-            # ]
-            # * max(0, num_layers // 3 - 1),
-            nn.Linear(model_dim, model_dim),
-            nn.ReLU(),
-            nn.BatchNorm1d(model_dim),
-            nn.Dropout(dropout),
-            nn.Linear(model_dim, model_dim // 4),
-            nn.ReLU(),
-            nn.LayerNorm(model_dim // 4),
-            nn.Linear(model_dim // 4, 2),
+        self.output_layer = nn.Sequential(
+            *(
+                [
+                    nn.Sequential(
+                        nn.Linear(model_dim, model_dim),
+                        nn.ReLU(),
+                        nn.BatchNorm1d(model_dim),
+                    )
+                    for _ in range(max(0, num_layers - 2))
+                ]
+                + [
+                    nn.Dropout(dropout),
+                    nn.Linear(model_dim, model_dim // 4),
+                    nn.ReLU(),
+                    nn.LayerNorm(model_dim // 4),
+                    nn.Linear(model_dim // 4, 2),
+                ]
+            )
         )
 
     def forward(self, x: Tensor) -> Tensor:
         """
-        Forward pass of the ZooSpacialEncoder.
+        Forward pass of the TheZooArchitecture.
 
         Args:
             x (Tensor): Input tensor of shape [B, O, D, F].
@@ -187,37 +237,30 @@ class ZooSpacialEncoder(nn.Module):
         # x: [B: batch_size, O: offense, D: defense, F: feature_len]
         B, O, D, F = x.size()  # B=Batch, O=Offense, D=Defense, F=Feature
 
+        # Normalize features
         x = self.feature_norm_layer(x.permute(0, 3, 1, 2)).permute(0, 2, 3, 1)  # [B,O,D,F] -> [B,O,D,F]
-        x = self.feature_embedding_layer(x)  # [B,O,D,F] -> [B,O,D,H: model_dim]
+        # Embed features
+        x = self.feature_embedding_layer(x)  # [B,O,D,F] -> [B,O,D,M: model_dim]
 
         # apply first block, pool and collapse offensive dimension
-        x = self.off_def_player_block(x.permute(0, 3, 2, 1))  # [B,O,D,H] -> [B,H,D,O]
-        x = nn.MaxPool2d((1, O))(x) * 0.3 + nn.AvgPool2d((1, O))(x) * 0.7  # [B,H,D,O] -> [B,H,D,1]
-        x = x.squeeze(-1)  # [B,H,D,1] -> [B,H,D]
+        x = self.ff_block1(x.permute(0, 3, 2, 1))  # [B,O,D,M] -> [B,M,D,O]
+        x = nn.MaxPool2d((1, O))(x) * 0.3 + nn.AvgPool2d((1, O))(x) * 0.7  # [B,M,D,O] -> [B,M,D,1]
+        x = x.squeeze(-1)  # [B,M,D,1] -> [B,M,D]
 
         # apply second block, pool and collapse defensive dimension
-        x = self.def_player_block(x)  # [B,H,D] -> [B,H,D]
-        x = nn.MaxPool1d(D)(x) * 0.3 + nn.AvgPool1d(D)(x) * 0.7  # [B,H,D] -> [B,H,1]
-        x = x.squeeze(-1)  # [B,H,1] -> [B,H]
+        x = self.ff_block2(x)  # [B,M,D] -> [B,M,D]
+        x = nn.MaxPool1d(D)(x) * 0.3 + nn.AvgPool1d(D)(x) * 0.7  # [B,M,D] -> [B,M,1]
+        x = x.squeeze(-1)  # [B,M,1] -> [B,M]
 
         # apply decoder
-        x = self.decoder(x)  # [B,H] -> [B,2]
+        x = self.output_layer(x)  # [B,M] -> [B,2]
         assert x.shape == (B, 2)
         return x
-
-    def get_hyperparams(self) -> dict[str, Any]:
-        """
-        Get the hyperparameters of the model.
-
-        Returns:
-            Dict[str, Any]: Dictionary of hyperparameters.
-        """
-        return self.hyperparams
 
 
 class LitModel(LightningModule):
     """
-    Lightning module for training and evaluating models.
+    Lightning module for training and evaluating tackle prediction models.
     """
 
     def __init__(
@@ -234,17 +277,16 @@ class LitModel(LightningModule):
 
         Args:
             model_type (str): Type of model ('transformer' or 'zoo').
-            batch_size (int): Batch size for training.
-            model_dim (int): Dimension of the model.
+            batch_size (int): Batch size for training and evaluation.
+            model_dim (int): Dimension of the model's internal representations.
             num_layers (int): Number of layers in the model.
-            dropout (float): Dropout rate.
-            learning_rate (float): Learning rate for optimization.
+            dropout (float): Dropout rate for regularization.
+            learning_rate (float): Learning rate for the optimizer.
         """
         super().__init__()
         self.model_type = model_type.lower()
-        self.model_class = SportsTransformerEncoder if self.model_type == "transformer" else ZooSpacialEncoder
+        self.model_class = SportsTransformer if self.model_type == "transformer" else TheZooArchitecture
         self.feature_len = 6 if self.model_type == "transformer" else 10
-
         self.model = self.model_class(
             feature_len=self.feature_len, model_dim=model_dim, num_layers=num_layers, dropout=dropout
         )
@@ -257,7 +299,9 @@ class LitModel(LightningModule):
         self.learning_rate = learning_rate
         self.num_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         self.hparams["params"] = self.num_params
-        print(self.hparams)
+        for k, v in self.model.hyperparams.items():
+            self.hparams[k] = v
+
         self.save_hyperparameters()
         self.loss_fn = torch.nn.SmoothL1Loss()
 
@@ -275,14 +319,14 @@ class LitModel(LightningModule):
 
     def training_step(self, batch: tuple[Tensor, Tensor], batch_idx: int) -> Tensor:
         """
-        Training step for the model.
+        Perform a single training step.
 
         Args:
-            batch (Tuple[Tensor, Tensor]): Batch of input and target tensors.
+            batch (tuple[Tensor, Tensor]): Batch of input features and target locations.
             batch_idx (int): Index of the current batch.
 
         Returns:
-            Tensor: Computed loss.
+            Tensor: Computed loss for the batch.
         """
         x, y = batch
         y_hat = self.model(x)
@@ -295,7 +339,7 @@ class LitModel(LightningModule):
         Validation step for the model.
 
         Args:
-            batch (Tuple[Tensor, Tensor]): Batch of input and target tensors.
+            batch (tuple[Tensor, Tensor]): Batch of input and target tensors.
             batch_idx (int): Index of the current batch.
 
         Returns:
@@ -312,7 +356,7 @@ class LitModel(LightningModule):
         Test step for the model.
 
         Args:
-            batch (Tuple[Tensor, Tensor]): Batch of input and target tensors.
+            batch (tuple[Tensor, Tensor]): Batch of input and target tensors.
             batch_idx (int): Index of the current batch.
 
         Returns:
@@ -328,7 +372,7 @@ class LitModel(LightningModule):
         Prediction step for the model.
 
         Args:
-            batch (Tuple[Tensor, Tensor]): Batch of input and target tensors.
+            batch (tuple[Tensor, Tensor]): Batch of input and target tensors.
             batch_idx (int): Index of the current batch.
             dataloader_idx (int): Index of the dataloader.
 
@@ -346,8 +390,7 @@ class LitModel(LightningModule):
         Returns:
             AdamW: Configured optimizer.
         """
-        optimizer = AdamW(self.parameters(), lr=self.learning_rate)
-        return optimizer
+        return AdamW(self.parameters(), lr=self.learning_rate)
 
     def get_hyperparams(self) -> dict[str, Any]:
         """
