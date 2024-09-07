@@ -14,6 +14,9 @@ dependencies = [
     "ipykernel>=6.29.5",
     "ruff>=0.6.3",
     "torch-tb-profiler>=0.4.3",
+    "seaborn>=0.13.2",
+    "plotly>=5.24.0",
+    "nbformat>=5.10.4",
 ]
 
 [tool.ruff]

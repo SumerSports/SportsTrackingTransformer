@@ -118,16 +118,29 @@ def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None, devices=
     return pl.concat(pred_dfs, how="vertical")
 
 
-def get_val_loss_from_ckpt(ckpt_path):
-    val_loss_pattern = re.compile(r"val_loss=([\d\.]+)")
+def get_epoch_val_loss_from_ckpt(ckpt_path: Path) -> tuple[int, float]:
+    """
+    Get the epoch and validation loss from a checkpoint path.
+
+    Args:
+        ckpt_path (Path): Path to the checkpoint.
+
+    Returns:
+        tuple[int, float]: Epoch and validation loss.
+    """
+    ckpt_path = Path(ckpt_path)
+
+    val_loss_pattern = re.compile(r"epoch=(\d+)-val_loss=([\d\.]+)")
     match = val_loss_pattern.search(ckpt_path.name)
     if match:
         try:
-            return float(match.group(1).rstrip("."))
+            epoch = int(match.group(1))
+            val_loss = float(match.group(2).rstrip("."))
+            return epoch, val_loss
         except ValueError:
-            print(f"Warning: Invalid val_loss in checkpoint name: {ckpt_path.name}")
-            return float("inf")
-    return float("inf")
+            print(f"Warning: Invalid epoch or val_loss in checkpoint name: {ckpt_path.name}")
+            return -1, float("inf")
+    return -1, float("inf")
 
 
 def train_model(
@@ -139,6 +152,8 @@ def train_model(
     dropout,
     device=0,
     dbg_run=False,
+    skip_existing=False,
+    patience=5,
 ):
     """
     Train a single model with specified hyperparameters.
@@ -156,6 +171,46 @@ def train_model(
     Returns:
         LitModel: Trained model instance.
     """
+    # Set up logger and trainer for full run
+    logger = TensorBoardLogger(
+        save_dir=MODELS_PATH,
+        name=model_type,
+        log_graph=False,
+        default_hp_metric=False,
+        version=f"M{model_dim}_L{num_layers}_LR{learning_rate:.0e}",
+    )
+
+    # Check for existing checkpoint with best val_loss
+    ckpt_dir = Path(logger.log_dir) / "checkpoints"
+    existing_ckpt = None
+    if ckpt_dir.exists():
+        ckpts = list(ckpt_dir.glob("*.ckpt"))
+        if ckpts:
+            # Find the checkpoint with the lowest val_loss
+            best_ckpt = min(ckpts, key=lambda x: get_epoch_val_loss_from_ckpt(x)[1])
+            existing_ckpt = str(best_ckpt)
+            print(f"Resuming training from best checkpoint: {existing_ckpt}")
+
+    # initialize model
+    if existing_ckpt is not None:
+        lit_model = LitModel.load_from_checkpoint(existing_ckpt)
+        curr_epoch, _ = get_epoch_val_loss_from_ckpt(existing_ckpt)
+    else:
+        lit_model = LitModel(
+            model_type,
+            batch_size=batch_size,
+            model_dim=model_dim,
+            num_layers=num_layers,
+            learning_rate=learning_rate,
+            dropout=dropout,
+        )
+        curr_epoch = 0
+
+    # if skip_existing and epochs > patience, skip re-training
+    if skip_existing and curr_epoch >= patience:
+        print(f"Skipping training as {curr_epoch=} >= {patience=}")
+        return lit_model
+
     # Load datasets
     train_ds: BDB2024_Dataset = load_datasets(model_type, split="train")
     val_ds: BDB2024_Dataset = load_datasets(model_type, split="val")
@@ -163,16 +218,6 @@ def train_model(
     # Create dataloaders
     train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=30)
     val_dataloader = DataLoader(val_ds, batch_size=1024, shuffle=False, pin_memory=True, num_workers=30)
-
-    # Initialize model
-    lit_model = LitModel(
-        model_type,
-        batch_size=batch_size,
-        model_dim=model_dim,
-        num_layers=num_layers,
-        learning_rate=learning_rate,
-        dropout=dropout,
-    )
 
     # Set up devices
     devices = [device] if device >= 0 else [0, 1]  # if device is specified, use it, otherwise pick 1 gpu to use
@@ -190,26 +235,6 @@ def train_model(
         )
         dbg_trainer.fit(lit_model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
 
-    # Set up logger and trainer for full run
-    logger = TensorBoardLogger(
-        save_dir=MODELS_PATH,
-        name=model_type,
-        log_graph=False,
-        default_hp_metric=False,
-        version=f"M{model_dim}_L{num_layers}_LR{learning_rate:.0e}",
-    )
-
-    # Check for existing checkpoint with best val_loss
-    ckpt_dir = Path(logger.log_dir) / "checkpoints"
-    existing_ckpt = None
-    if ckpt_dir.exists():
-        ckpts = list(ckpt_dir.glob("*.ckpt"))
-        if ckpts:
-            # Find the checkpoint with the lowest val_loss
-            best_ckpt = min(ckpts, key=get_val_loss_from_ckpt)
-            existing_ckpt = str(best_ckpt)
-            print(f"Resuming training from best checkpoint: {existing_ckpt}")
-
     trainer = Trainer(
         max_epochs=100,
         accelerator="gpu",
@@ -219,7 +244,7 @@ def train_model(
         sync_batchnorm=True,
         enable_model_summary=True,
         callbacks=[
-            callbacks.EarlyStopping(monitor="val_loss", patience=5),
+            callbacks.EarlyStopping(monitor="val_loss", patience=patience),
             callbacks.ModelCheckpoint(monitor="val_loss", save_top_k=1, filename="{epoch}-{val_loss:.3f}"),
             callbacks.ModelSummary(max_depth=2),
         ],
@@ -250,21 +275,23 @@ def main(args):
     and random search based on the provided arguments.
     """
     # Define hyperparameter search space
-    lrs = [1e-4]
+    lrs = [1e-3, 1e-4]
     model_dims = [32, 128, 512]
     num_layers = [2, 4, 8]
 
     # Create gridsearch iterable
-    gridsearch = list(product(lrs, model_dims, num_layers))
+    gridsearch = list(product(model_dims, num_layers, lrs))
     if args.shuffle:
         random.shuffle(gridsearch)
+    if args.reverse:
+        gridsearch.reverse()
 
     if args.hparam_search_iters > 0:
         # Perform random search if hparam_search_iters is specified
         gridsearch = gridsearch[: args.hparam_search_iters]
 
     # Train models for each hyperparameter combination
-    for LR, M, L in tqdm(gridsearch, desc="Hyperparam Gridsearch"):
+    for M, L, LR in tqdm(gridsearch, desc="Hyperparam Gridsearch"):
         train_model(
             model_type=args.model_type,
             batch_size=256,
@@ -273,6 +300,8 @@ def main(args):
             learning_rate=LR,
             dropout=0.3,
             device=args.device,
+            skip_existing=args.skip_existing,
+            patience=args.patience,
         )
 
 
@@ -282,9 +311,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--hparam_search_iters", type=int, default=-1, help="Number of random hyperparameter combinations to try"
     )
-    parser.add_argument("--shuffle", "-s", action="store_true", help="Shuffle the hyperparameter gridsearch")
+    parser.add_argument(
+        "--skip-existing", action="store_true", help="Skip training models that already have a checkpoint"
+    )
+    parser.add_argument("--shuffle", "-S", action="store_true", help="Shuffle the hyperparameter gridsearch")
+    parser.add_argument("--reverse", "-R", action="store_true", help="Reverse the hyperparameter gridsearch")
     parser.add_argument(
         "--model_type", type=str, default="transformer", help="Type of model to train ('transformer' or 'zoo')"
     )
+    parser.add_argument("--patience", "-P", type=int, default=5, help="Early stopping patience")
     args = parser.parse_args()
     main(args)

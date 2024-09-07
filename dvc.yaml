@@ -37,12 +37,12 @@ stages:
     - src/models.py
     - data/datasets/zoo/
     outs:
-    - data/models/zoo/:
+    - models/zoo/:
         persist: true
         cache: true
 
   train_transformer_models:
-    cmd: uv run python src/train.py --model_type transformer --device 1
+    cmd: uv run python src/train.py --model_type transformer --device 0
 
     deps:
     - src/train.py
@@ -50,7 +50,7 @@ stages:
     - src/models.py
     - data/datasets/transformer
     outs:
-    - data/models/transformer/:
+    - models/transformer/:
         persist: true
         cache: true
 
@@ -61,10 +61,10 @@ stages:
     - src/pick_best_models.py
     - src/datasets.py
     - src/models.py
-
-    - data/models/
+    - models/zoo/
+    - models/transformer/
     outs:
-    - data/best_models/:
+    - models/best_models/:
         cache: false
         persist: false
 artifacts:

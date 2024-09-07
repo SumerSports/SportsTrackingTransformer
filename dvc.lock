@@ -56,3 +56,86 @@ stages:
       md5: 7e5c358b2cc96f0ef90feba4d4f319b1.dir
       size: 36808213462
       nfiles: 12
+  train_zoo_models:
+    cmd: uv run python src/train.py --model_type zoo --device 0
+    deps:
+    - path: data/datasets/zoo/
+      hash: md5
+      md5: e0c6bb559824f77710178d27f9cec4a9.dir
+      size: 11254026456
+      nfiles: 3
+    - path: src/datasets.py
+      hash: md5
+      md5: 1cb7940a2d1f068b4c55f509df0cab56
+      size: 10137
+    - path: src/models.py
+      hash: md5
+      md5: 09e05d29c28218ac2483f929e3118990
+      size: 14086
+    - path: src/train.py
+      hash: md5
+      md5: 6efdef87730177d80d6003777ba5671d
+      size: 11962
+    outs:
+    - path: models/zoo/
+      hash: md5
+      md5: 5a5058cd8f4a7424d55e0407d615fa42.dir
+      size: 1744724533
+      nfiles: 201
+  train_transformer_models:
+    cmd: uv run python src/train.py --model_type transformer --device 0
+    deps:
+    - path: data/datasets/transformer
+      hash: md5
+      md5: 3f42dcf10223ff8b88b426d75e678f26.dir
+      size: 7150080275
+      nfiles: 3
+    - path: src/datasets.py
+      hash: md5
+      md5: 1cb7940a2d1f068b4c55f509df0cab56
+      size: 10137
+    - path: src/models.py
+      hash: md5
+      md5: 09e05d29c28218ac2483f929e3118990
+      size: 14086
+    - path: src/train.py
+      hash: md5
+      md5: 6efdef87730177d80d6003777ba5671d
+      size: 11962
+    outs:
+    - path: models/transformer/
+      hash: md5
+      md5: 12bad02215af3d39d7a121b5794f5c74.dir
+      size: 3193471043
+      nfiles: 209
+  pick_best_models:
+    cmd: uv run python src/pick_best_models.py
+    deps:
+    - path: models/transformer/
+      hash: md5
+      md5: 0f7854256573ea8d0a4a39a02561a102.dir
+      size: 3193471607
+      nfiles: 209
+    - path: models/zoo/
+      hash: md5
+      md5: 69f2632ee69f2da6260053c0e224e207.dir
+      size: 1744724621
+      nfiles: 202
+    - path: src/datasets.py
+      hash: md5
+      md5: 1cb7940a2d1f068b4c55f509df0cab56
+      size: 10137
+    - path: src/models.py
+      hash: md5
+      md5: 09e05d29c28218ac2483f929e3118990
+      size: 14086
+    - path: src/pick_best_models.py
+      hash: md5
+      md5: 8334b57aaf02585a32decc1d93944428
+      size: 3176
+    outs:
+    - path: models/best_models/
+      hash: md5
+      md5: 0c809b62c5fcd7a5fc5275a20dd28a20.dir
+      size: 81001317
+      nfiles: 4

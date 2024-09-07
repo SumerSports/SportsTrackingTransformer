@@ -44,7 +44,7 @@ class SportsTransformer(nn.Module):
         """
         super().__init__()
         dim_feedforward = model_dim * 4
-        num_heads = min(16, max(1, model_dim // 32))
+        num_heads = min(16, max(2, 2 * round(model_dim / 64)))  # attention is better optimized for even number of heads
 
         self.hyperparams = {
             "model_dim": model_dim,

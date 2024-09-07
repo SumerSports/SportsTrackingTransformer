@@ -17,7 +17,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 from shutil import copy
 
-from train import get_val_loss_from_ckpt
+from train import get_epoch_val_loss_from_ckpt
 
 
 def find_best_checkpoint(root_dir: Path) -> dict[str, Path]:
@@ -42,7 +42,10 @@ def find_best_checkpoint(root_dir: Path) -> dict[str, Path]:
 
             if checkpoints:
                 # Find the checkpoint with the lowest val_loss
-                best_checkpoint = min(checkpoints, key=get_val_loss_from_ckpt)
+                best_checkpoint = min(
+                    checkpoints,
+                    key=lambda x: get_epoch_val_loss_from_ckpt(x)[1],
+                )
                 best_checkpoints[model_name] = best_checkpoint
 
     return best_checkpoints
