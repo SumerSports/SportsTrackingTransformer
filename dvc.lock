@@ -74,14 +74,14 @@ stages:
       size: 14086
     - path: src/train.py
       hash: md5
-      md5: 6efdef87730177d80d6003777ba5671d
-      size: 11962
+      md5: 55bdf380852df4d6648af59dda3351ad
+      size: 11960
     outs:
     - path: models/zoo/
       hash: md5
-      md5: 5a5058cd8f4a7424d55e0407d615fa42.dir
-      size: 1744724533
-      nfiles: 201
+      md5: f51824cae0ea8c0a266e495833fec65d.dir
+      size: 1164274233
+      nfiles: 122
   train_transformer_models:
     cmd: uv run python src/train.py --model_type transformer --device 0
     deps:
@@ -100,27 +100,27 @@ stages:
       size: 14086
     - path: src/train.py
       hash: md5
-      md5: 6efdef87730177d80d6003777ba5671d
-      size: 11962
+      md5: 55bdf380852df4d6648af59dda3351ad
+      size: 11960
     outs:
     - path: models/transformer/
       hash: md5
-      md5: 12bad02215af3d39d7a121b5794f5c74.dir
-      size: 3193471043
-      nfiles: 209
+      md5: 3874c675a8cb341f107ea5829a95eb35.dir
+      size: 1721799628
+      nfiles: 117
   pick_best_models:
     cmd: uv run python src/pick_best_models.py
     deps:
     - path: models/transformer/
       hash: md5
-      md5: 0f7854256573ea8d0a4a39a02561a102.dir
-      size: 3193471607
-      nfiles: 209
+      md5: 3874c675a8cb341f107ea5829a95eb35.dir
+      size: 1721799628
+      nfiles: 117
     - path: models/zoo/
       hash: md5
-      md5: 69f2632ee69f2da6260053c0e224e207.dir
-      size: 1744724621
-      nfiles: 202
+      md5: f51824cae0ea8c0a266e495833fec65d.dir
+      size: 1164274233
+      nfiles: 122
     - path: src/datasets.py
       hash: md5
       md5: 1cb7940a2d1f068b4c55f509df0cab56
@@ -136,6 +136,6 @@ stages:
     outs:
     - path: models/best_models/
       hash: md5
-      md5: 0c809b62c5fcd7a5fc5275a20dd28a20.dir
-      size: 81001317
+      md5: acd9753472d3f159a8ea3f9c3930560d.dir
+      size: 150873868
       nfiles: 4

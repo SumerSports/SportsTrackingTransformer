@@ -236,7 +236,7 @@ def train_model(
         dbg_trainer.fit(lit_model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
 
     trainer = Trainer(
-        max_epochs=100,
+        max_epochs=200,
         accelerator="gpu",
         profiler=None,
         logger=logger,
@@ -275,9 +275,9 @@ def main(args):
     and random search based on the provided arguments.
     """
     # Define hyperparameter search space
-    lrs = [1e-3, 1e-4]
+    lrs = [1e-4]
     model_dims = [32, 128, 512]
-    num_layers = [2, 4, 8]
+    num_layers = [1, 2, 4, 8]
 
     # Create gridsearch iterable
     gridsearch = list(product(model_dims, num_layers, lrs))
@@ -319,6 +319,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_type", type=str, default="transformer", help="Type of model to train ('transformer' or 'zoo')"
     )
-    parser.add_argument("--patience", "-P", type=int, default=5, help="Early stopping patience")
+    parser.add_argument("--patience", "-P", type=int, default=10, help="Early stopping patience")
     args = parser.parse_args()
     main(args)
