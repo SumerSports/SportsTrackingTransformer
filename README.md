@@ -3,7 +3,22 @@
 
 ## Introduction
 
-The world of sports tracking data is exploding, and there is a strong need to finding a Deep Neural Net Framework that can be applied to a wide-range of Sports Tracking problems in a reproducible, scaleable, and generalized way. At SumerSports, we were faced with this challenge 2 years ago, we started by looking at the commonly-used architecture in the NFL at that time: the Zoo Model that won the 2020 Big Data Bowl. After implementing and deeply breaking down this approach, we found it that while it was a great architecture for the problem and dataset it was designed for, it had many shortcomings in generalizability and being overly-regularized. From there, we discovered that many of the shortcomings of The Zoo Model can be solved by applying the Transformer Encoder Architecture to the data. This repository demonstrates how to apply the Transformer Encoder Architecture to sports tracking data and compares it to the Zoo Model. The problem we chose to solve is predicting tackle location using the 2024 Big Data Bowl dataset as it is a much more rich dataset than the one in 2020. We believe these results will generalize to other problems using NFL tracking data but also to other sports and look forward to seeing it applied elsewhere.
+The rapid advancement of spatial tracking technologies in sports has led to an unprecedented surge in high-quality, high-volume tracking data across all levels of play. While this data has catalyzed innovations in sports analytics, current methodologies often struggle with a fundamental challenge: the player-ordering problem. This issue arises from the dynamic nature of team sports, where player roles and formations are fluid and can vary between games, making it difficult to create consistent input structures for machine learning models.
+This paper introduces a transformative approach to sports analytics by applying Transformer architectures to address these challenges. Our framework operates end-to-end on raw player tracking data, naturally handles unordered collections of player vectors, and is inherently designed to learn pairwise spatial interactions between players. Using the NFL's 2024 Big Data Bowl dataset, we demonstrate our approach's effectiveness in predicting tackle locations, showing significant improvements over commonly used architectures, particularly in generalizing to diverse game situations.
+The repository contains our implementation and experimental results, providing a foundation for future research in sports analytics using Transformer-based architectures. We believe this approach can be extended beyond American football to other team sports, offering a more robust and generalizable framework for analyzing player tracking data.
+
+![Simple Architecture Diagram](./Sumer%20Sports%20Transformer%20Simple%20Arch.jpg)
+
+Our key contributions include:
+
+* A minimal-feature-engineering approach to handling the player-ordering problem
+* An end-to-end Transformer architecture adapted for sports tracking data
+* Empirical evidence showing superior generalization compared to existing methods
+* Open-source implementation for reproducibility and further research
+
+We hope this work catalyzes a shift in sports analytics research methodologies, advancing our ability to derive meaningful insights from tracking data across various sports domains.
+
+
 
 ## Getting Started With The Code
 
