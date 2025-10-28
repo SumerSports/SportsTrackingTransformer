@@ -3,7 +3,7 @@ name = "sports-tracking-transformer"
 version = "0.1.0"
 description = "Demo repository showcasing Transformer model architecture for sports tracking data"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "torch==2.3.0",
     "polars[numpy,pandas,plot,pyarrow,style]>=1.5.0",
