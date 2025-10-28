@@ -285,16 +285,14 @@ class LitModel(LightningModule):
         """
         super().__init__()
         self.model_type = model_type.lower()
-        self.model_class = SportsTransformer if self.model_type == "transformer" else TheZooArchitecture
-        self.feature_len = 6 if self.model_type == "transformer" else 10
+        self.model_class = SportsTransformer
+        # 8 features: x, y, s, a, vx, vy, ox, oy
+        self.feature_len = 8
         self.model = self.model_class(
             feature_len=self.feature_len, model_dim=model_dim, num_layers=num_layers, dropout=dropout
         )
-        self.example_input_array = (
-            torch.randn((batch_size, 22, self.feature_len))
-            if self.model_type == "transformer"
-            else torch.randn((batch_size, 10, 11, self.feature_len))
-        )
+        # Variable number of players per frame, use 22 as example
+        self.example_input_array = torch.randn((batch_size, 22, self.feature_len))
 
         self.learning_rate = learning_rate
         self.num_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)

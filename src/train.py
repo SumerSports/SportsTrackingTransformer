@@ -1,7 +1,7 @@
 """
-Training Script for NFL Big Data Bowl 2024 Tackle Prediction Models
+Training Script for NFL Big Data Bowl 2026 Ball Landing Prediction Models
 
-This module handles the training process for tackle prediction models. It includes
+This module handles the training process for ball landing prediction models. It includes
 functions for loading datasets, predicting using trained models, and conducting
 hyperparameter searches.
 
@@ -29,8 +29,8 @@ from lightning.pytorch.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from datasets import BDB2024_Dataset, load_datasets
-from models import LitModel
+from src.datasets import BDB2026_Dataset, load_datasets
+from src.models import LitModel
 
 MODELS_PATH = Path("models")
 MODELS_PATH.mkdir(exist_ok=True)
@@ -59,9 +59,9 @@ def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None, devices=
         model = LitModel.load_from_checkpoint(ckpt_path)
 
     # Load datasets
-    train_ds: BDB2024_Dataset = load_datasets(model.model_type, split="train")
-    val_ds: BDB2024_Dataset = load_datasets(model.model_type, split="val")
-    test_ds: BDB2024_Dataset = load_datasets(model.model_type, split="test")
+    train_ds: BDB2026_Dataset = load_datasets(model.model_type, split="train")
+    val_ds: BDB2026_Dataset = load_datasets(model.model_type, split="val")
+    test_ds: BDB2026_Dataset = load_datasets(model.model_type, split="test")
 
     # Create unshuffled dataloaders for prediction
     dataloaders = {
@@ -78,7 +78,7 @@ def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None, devices=
         preds: np.ndarray = torch.concat(preds, dim=0).cpu().numpy()
 
         # Prepare metadata
-        dataset: BDB2024_Dataset = dataloader.dataset
+        dataset: BDB2026_Dataset = dataloader.dataset
         tgt_df = pl.from_pandas(dataset.tgt_df_partition, include_index=True)
         ds_keys = np.array(dataset.keys)
 
@@ -89,24 +89,20 @@ def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None, devices=
             tgt_df.join(
                 pl.DataFrame(
                     {
-                        "gameId": ds_keys[:, 0],
-                        "playId": ds_keys[:, 1],
-                        "mirrored": ds_keys[:, 2],
-                        "frameId": ds_keys[:, 3],
+                        "game_id": ds_keys[:, 0],
+                        "play_id": ds_keys[:, 1],
+                        "frame_id": ds_keys[:, 2],
                         "dataset_split": split,
-                        "tackle_x_rel_pred": preds[:, 0].round(2),
-                        "tackle_y_rel_pred": preds[:, 1].round(2),
+                        "ball_land_x_pred": preds[:, 0].round(2),
+                        "ball_land_y_pred": preds[:, 1].round(2),
                     },
-                    schema_overrides={"mirrored": bool},
                 ),
-                on=["gameId", "playId", "mirrored", "frameId"],
+                on=["game_id", "play_id", "frame_id"],
                 how="inner",
             )
             .with_columns(
-                tackle_x_rel_pred=pl.col("tackle_x_rel_pred").round(2),
-                tackle_y_rel_pred=pl.col("tackle_y_rel_pred").round(2),
-                tackle_x_pred=(pl.col("tackle_x_rel_pred") + pl.col("anchor_x")).round(2),
-                tackle_y_pred=(pl.col("tackle_y_rel_pred") + pl.col("anchor_y")).round(2),
+                ball_land_x_pred=pl.col("ball_land_x_pred").round(2),
+                ball_land_y_pred=pl.col("ball_land_y_pred").round(2),
             )
             # add model hparams to pred df
             .with_columns(**{k: pl.lit(v) for k, v in model.hparams.items()})
@@ -212,8 +208,8 @@ def train_model(
         return lit_model
 
     # Load datasets
-    train_ds: BDB2024_Dataset = load_datasets(model_type, split="train")
-    val_ds: BDB2024_Dataset = load_datasets(model_type, split="val")
+    train_ds: BDB2026_Dataset = load_datasets(model_type, split="train")
+    val_ds: BDB2026_Dataset = load_datasets(model_type, split="val")
 
     # Create dataloaders
     train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=30)

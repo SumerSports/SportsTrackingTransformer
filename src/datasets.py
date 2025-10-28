@@ -1,12 +1,12 @@
 """
-Dataset Module for NFL Big Data Bowl 2024
+Dataset Module for NFL Big Data Bowl 2026
 
-This module defines the BDB2024_Dataset class, which is used to load and preprocess
-data for training machine learning models. It includes functionality for both
-'transformer' and 'zoo' model types.
+This module defines the BDB2026_Dataset class, which is used to load and preprocess
+data for training machine learning models to predict ball landing locations.
+It includes functionality for 'transformer' model type using position and kinematic features only.
 
 Classes:
-    BDB2024_Dataset: Custom dataset class for NFL tracking data
+    BDB2026_Dataset: Custom dataset class for NFL tracking data
 
 Functions:
     load_datasets: Load preprocessed datasets for a specific model type and data split
@@ -29,15 +29,15 @@ PREPPED_DATA_DIR = Path("data/split_prepped_data/")
 DATASET_DIR = Path("data/datasets/")
 
 
-class BDB2024_Dataset(Dataset):
+class BDB2026_Dataset(Dataset):
     """
-    Custom dataset class for NFL tracking data.
+    Custom dataset class for NFL tracking data to predict ball landing locations.
 
     This class preprocesses and stores NFL tracking data for use in machine learning models.
-    It supports both 'transformer' and 'zoo' model types.
+    Uses only position and kinematic features.
 
     Attributes:
-        model_type (str): Type of model ('transformer' or 'zoo')
+        model_type (str): Type of model ('transformer')
         keys (list): List of unique identifiers for each data point
         feature_df_partition (pd.DataFrame): Preprocessed feature data
         tgt_df_partition (pd.DataFrame): Preprocessed target data
@@ -55,28 +55,28 @@ class BDB2024_Dataset(Dataset):
         Initialize the dataset.
 
         Args:
-            model_type (str): Type of model ('transformer' or 'zoo')
+            model_type (str): Type of model (currently only 'transformer' supported)
             feature_df (pl.DataFrame): DataFrame containing feature data
             tgt_df (pl.DataFrame): DataFrame containing target data
 
         Raises:
             ValueError: If an invalid model_type is provided
         """
-        if model_type not in ["transformer", "zoo"]:
-            raise ValueError("model_type must be either 'transformer' or 'zoo'")
+        if model_type not in ["transformer"]:
+            raise ValueError("model_type must be 'transformer'")
 
         self.model_type = model_type
-        self.keys = list(feature_df.select(["gameId", "playId", "mirrored", "frameId"]).unique().rows())
+        self.keys = list(feature_df.select(["game_id", "play_id", "frame_id"]).unique().rows())
 
         # Convert to pandas form with index for quick row retrieval
         self.feature_df_partition = (
             feature_df.to_pandas(use_pyarrow_extension_array=True)
-            .set_index(["gameId", "playId", "mirrored", "frameId", "nflId"])
+            .set_index(["game_id", "play_id", "frame_id", "nfl_id"])
             .sort_index()
         )
         self.tgt_df_partition = (
             tgt_df.to_pandas(use_pyarrow_extension_array=True)
-            .set_index(["gameId", "playId", "mirrored", "frameId"])
+            .set_index(["game_id", "play_id", "frame_id"])
             .sort_index()
         )
 
@@ -136,7 +136,7 @@ class BDB2024_Dataset(Dataset):
 
     def transform_input_frame_df(self, frame_df: pd.DataFrame) -> np.ndarray:
         """
-        Transform input frame DataFrame to numpy array based on model type.
+        Transform input frame DataFrame to numpy array using position and kinematic features only.
 
         Args:
             frame_df (pd.DataFrame): Input frame DataFrame
@@ -149,14 +149,12 @@ class BDB2024_Dataset(Dataset):
         """
         if self.model_type == "transformer":
             return self.transformer_transform_input_frame_df(frame_df)
-        elif self.model_type == "zoo":
-            return self.zoo_transform_input_frame_df(frame_df)
         else:
             raise ValueError(f"Unknown model type: {self.model_type}")
 
     def transform_target_df(self, tgt_df: pd.DataFrame) -> np.ndarray:
         """
-        Transform target DataFrame to numpy array.
+        Transform target DataFrame to numpy array (ball_land_x, ball_land_y).
 
         Args:
             tgt_df (pd.DataFrame): Target DataFrame
@@ -167,90 +165,59 @@ class BDB2024_Dataset(Dataset):
         Raises:
             AssertionError: If the output shape is not as expected
         """
-        y = tgt_df[["tackle_x_rel", "tackle_y_rel"]].to_numpy(dtype=np.float32).squeeze()
+        y = tgt_df[["ball_land_x", "ball_land_y"]].to_numpy(dtype=np.float32).squeeze()
         assert y.shape == (2,), f"Expected shape (2,), got {y.shape}"
         return y
 
     def transformer_transform_input_frame_df(self, frame_df: pd.DataFrame) -> np.ndarray:
         """
-        Transform input frame DataFrame for transformer model.
+        Transform input frame DataFrame for transformer model using position and kinematic features.
+        Pads or truncates to a fixed number of players (22) for batching.
+
+        Features used:
+        - x, y: position
+        - s: speed
+        - a: acceleration
+        - vx, vy: velocity components
+        - ox, oy: orientation components
 
         Args:
             frame_df (pd.DataFrame): Input frame DataFrame
 
         Returns:
-            np.ndarray: Transformed input features for transformer model
+            np.ndarray: Transformed input features for transformer model (shape: [22, 8])
 
         Raises:
             AssertionError: If the output shape is not as expected
         """
-        features = ["x_rel", "y_rel", "vx", "vy", "side", "is_ball_carrier"]
+        features = ["x", "y", "s", "a", "vx", "vy", "ox", "oy"]
         x = frame_df[features].to_numpy(dtype=np.float32)
-        assert x.shape == (22, len(features)), f"Expected shape (22, {len(features)}), got {x.shape}"
-        return x
+        num_players = x.shape[0]
 
-    def zoo_transform_input_frame_df(self, frame_df: pd.DataFrame) -> np.ndarray:
-        """
-        Transform input frame DataFrame for zoo model.
+        # Pad or truncate to fixed size (22 players)
+        max_players = 22
+        if num_players < max_players:
+            # Pad with zeros
+            padding = np.zeros((max_players - num_players, len(features)), dtype=np.float32)
+            x = np.vstack([x, padding])
+        elif num_players > max_players:
+            # Truncate (shouldn't happen with this data, but handle it)
+            x = x[:max_players]
 
-        Args:
-            frame_df (pd.DataFrame): Input frame DataFrame
-
-        Returns:
-            np.ndarray: Transformed input features for zoo model
-
-        Raises:
-            AssertionError: If the output shape is not as expected
-        """
-        # Isolate offensive and defensive players
-        ball_carrier = frame_df[frame_df["is_ball_carrier"] == 1]
-        off_plyrs = frame_df[(frame_df["side"] == 1) & (frame_df["is_ball_carrier"] == 0)]
-        def_plyrs = frame_df[frame_df["side"] == -1]
-
-        ball_carr_mvmt_feats = ball_carrier[["x_rel", "y_rel", "vx", "vy"]].to_numpy(dtype=np.float32).squeeze()
-        off_mvmt_feats = off_plyrs[["x_rel", "y_rel", "vx", "vy"]].to_numpy(dtype=np.float32)
-        def_mvmt_feats = def_plyrs[["x_rel", "y_rel", "vx", "vy"]].to_numpy(dtype=np.float32)
-
-        # Zoo interaction features
-        x = [
-            # def_vx, def_vy
-            np.tile(def_mvmt_feats[:, 2:], (10, 1, 1)),
-            # def_x - ball_x, def_y - ball_y
-            np.tile(
-                def_mvmt_feats[None, :, :2] - ball_carr_mvmt_feats[None, None, :2],
-                (10, 1, 1),
-            ),
-            # def_vx - ball_vx, def_vy - ball_vy
-            np.tile(
-                def_mvmt_feats[None, :, 2:] - ball_carr_mvmt_feats[None, None, 2:],
-                (10, 1, 1),
-            ),
-            # off_x - def_x, off_y - def_y
-            off_mvmt_feats[:, None, :2] - def_mvmt_feats[None, :, :2],
-            # off_vx - def_vx, off_vy - def_vy
-            off_mvmt_feats[:, None, 2:] - def_mvmt_feats[None, :, 2:],
-        ]
-
-        x = np.concatenate(
-            x,
-            dtype=np.float32,
-            axis=-1,
-        )
-
-        assert x.shape == (10, 11, 10), f"Expected shape (10, 11, 10), got {x.shape}"
+        assert x.shape == (max_players, len(features)), f"Expected shape ({max_players}, {len(features)}), got {x.shape}"
         return x
 
 
-def load_datasets(model_type: str, split: str) -> BDB2024_Dataset:
+def load_datasets(model_type: str, split: str) -> "BDB2026_Dataset":
     """
     Load datasets for a specific model type and data split.
 
     Args:
-        model_type (str): Type of model ('transformer' or 'zoo')
+        model_type (str): Type of model ('transformer')
         split (str): Data split ('train', 'val', or 'test')
 
     Returns:
-        BDB2024_Dataset: Loaded dataset for the specified model type and split
+        BDB2026_Dataset: Loaded dataset for the specified model type and split
 
     Raises:
         ValueError: If an unknown split is specified
@@ -268,20 +235,20 @@ def load_datasets(model_type: str, split: str) -> BDB2024_Dataset:
 
 def main():
     """
-    Main function to create and save datasets for different model types and splits.
+    Main function to create and save datasets for transformer model.
     """
     for split in ["test", "val", "train"]:
         feature_df = pl.read_parquet(PREPPED_DATA_DIR / f"{split}_features.parquet")
         tgt_df = pl.read_parquet(PREPPED_DATA_DIR / f"{split}_targets.parquet")
-        for model_type in ["zoo", "transformer"]:
-            print(f"Creating dataset for {model_type=}, {split=}...")
-            tic = time.time()
-            dataset = BDB2024_Dataset(model_type, feature_df, tgt_df)
-            out_dir = DATASET_DIR / model_type
-            out_dir.mkdir(exist_ok=True, parents=True)
-            with open(out_dir / f"{split}_dataset.pkl", "wb") as f:
-                pickle.dump(dataset, f)
-            print(f"Took {(time.time() - tic)/60:.1f} mins")
+        model_type = "transformer"
+        print(f"Creating dataset for {model_type=}, {split=}...")
+        tic = time.time()
+        dataset = BDB2026_Dataset(model_type, feature_df, tgt_df)
+        out_dir = DATASET_DIR / model_type
+        out_dir.mkdir(exist_ok=True, parents=True)
+        with open(out_dir / f"{split}_dataset.pkl", "wb") as f:
+            pickle.dump(dataset, f)
+        print(f"Took {(time.time() - tic)/60:.1f} mins")
 
 
 if __name__ == "__main__":
