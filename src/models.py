@@ -23,7 +23,7 @@ torch.set_float32_matmul_precision("medium")
 
 class SportsTransformer(nn.Module):
     """
-    Transformer model architecture for processing sports tracking data.
+    Transformer model that treats all 22 players as a sequence for tackle prediction.
     """
 
     def __init__(
@@ -140,11 +140,10 @@ class TheZooArchitecture(nn.Module):
     TheZooArchitecture represents a baseline model to compare against the SportsTransformer.
     It was the winning solution for the 2020 Big Data Bowl designed to predict run game yardage gained with an
     innovative (at the time) approach to solving player-equivariance problem. At a high level, the approach requires
-    generating a set of interaction vectors between each pair of players, applying feedforward layers to each
+    generating a set of pairwise interaction vectors between offense (10) and defense (11) players, applying feedforward layers to each
     interaction embedding independently, and then pooling across interaction dimensions to get to a final output.
 
-    Zoo Model code based on:
-    https://github.com/juancamilocampos/nfl-big-data-bowl-2020/blob/master/1st_place_zoo_solution_v2.ipynb
+    Based on: https://github.com/juancamilocampos/nfl-big-data-bowl-2020/blob/master/1st_place_zoo_solution_v2.ipynb
     """
 
     def __init__(
@@ -244,6 +243,7 @@ class TheZooArchitecture(nn.Module):
 
         # apply first block, pool and collapse offensive dimension
         x = self.ff_block1(x.permute(0, 3, 2, 1))  # [B,O,D,M] -> [B,M,D,O]
+        # Zoo Authors mentioned using a weighted sum of max and avg pooling helped most (experimentally verified hparam)
         x = nn.MaxPool2d((1, O))(x) * 0.3 + nn.AvgPool2d((1, O))(x) * 0.7  # [B,M,D,O] -> [B,M,D,1]
         x = x.squeeze(-1)  # [B,M,D,1] -> [B,M,D]
 

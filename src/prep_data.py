@@ -209,7 +209,7 @@ def augment_mirror_tracking(tracking_df: pl.DataFrame) -> pl.DataFrame:
     return tracking_df
 
 
-def get_tackle_loc_target_df(tracking_df: pl.DataFrame) -> pl.DataFrame:
+def get_tackle_loc_target_df(tracking_df: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame]:
     """
     Generate target dataframe for tackle location prediction.
 
@@ -276,7 +276,7 @@ def get_tackle_loc_target_df(tracking_df: pl.DataFrame) -> pl.DataFrame:
         how="inner",
     )
     new_play_count = len(tracking_df.select(["gameId", "playId"]).unique())
-    print(f"Lost {(og_play_count - new_play_count)/og_play_count:.3%} plays when joining with tackle_loc_df")
+    print(f"Lost {(og_play_count - new_play_count) / og_play_count:.3%} plays when joining with tackle_loc_df")
     return tackle_loc_df, tracking_df
 
 
@@ -298,7 +298,7 @@ def split_train_test_val(tracking_df: pl.DataFrame, target_df: pl.DataFrame) -> 
 
     print(
         f"Total set: {tracking_df.n_unique(['gameId', 'playId', 'mirrored'])} plays,",
-        f"{tracking_df.n_unique(['gameId', 'playId', 'mirrored', "frameId"])} frames",
+        f"{tracking_df.n_unique(['gameId', 'playId', 'mirrored', 'frameId'])} frames",
     )
 
     test_val_ids = tracking_df.select(["gameId", "playId"]).unique(maintain_order=True).sample(fraction=0.3, seed=42)
@@ -306,7 +306,7 @@ def split_train_test_val(tracking_df: pl.DataFrame, target_df: pl.DataFrame) -> 
     train_tgt_df = target_df.join(test_val_ids, on=["gameId", "playId"], how="anti")
     print(
         f"Train set: {train_tracking_df.n_unique(['gameId', 'playId', 'mirrored'])} plays,",
-        f"{train_tracking_df.n_unique(['gameId', 'playId', 'mirrored', "frameId"])} frames",
+        f"{train_tracking_df.n_unique(['gameId', 'playId', 'mirrored', 'frameId'])} frames",
     )
 
     test_ids = test_val_ids.sample(fraction=0.5, seed=42)  # 70-15-15 split
@@ -314,7 +314,7 @@ def split_train_test_val(tracking_df: pl.DataFrame, target_df: pl.DataFrame) -> 
     test_tgt_df = target_df.join(test_ids, on=["gameId", "playId"], how="inner")
     print(
         f"Test set: {test_tracking_df.n_unique(['gameId', 'playId', 'mirrored'])} plays,",
-        f"{test_tracking_df.n_unique(['gameId', 'playId', 'mirrored', "frameId"])} frames",
+        f"{test_tracking_df.n_unique(['gameId', 'playId', 'mirrored', 'frameId'])} frames",
     )
 
     val_ids = test_val_ids.join(test_ids, on=["gameId", "playId"], how="anti")
@@ -322,7 +322,7 @@ def split_train_test_val(tracking_df: pl.DataFrame, target_df: pl.DataFrame) -> 
     val_tgt_df = target_df.join(val_ids, on=["gameId", "playId"], how="inner")
     print(
         f"Validation set: {val_tracking_df.n_unique(['gameId', 'playId', 'mirrored'])} plays,",
-        f"{val_tracking_df.n_unique(['gameId', 'playId', 'mirrored', "frameId"])} frames",
+        f"{val_tracking_df.n_unique(['gameId', 'playId', 'mirrored', 'frameId'])} frames",
     )
 
     return {
