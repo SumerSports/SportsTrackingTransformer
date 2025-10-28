@@ -6,11 +6,15 @@ Usage: uv run python src/generate_results_summary.py
 """
 
 import json
+import re
 from pathlib import Path
 
 import polars as pl
+import torch
+from fvcore.nn import FlopCountAnalysis
 
 from metrics import calculate_ade
+from models import LitModel
 
 RESULTS_DIR = Path("results")
 RESULTS_DIR.mkdir(exist_ok=True)
@@ -18,6 +22,8 @@ RESULTS_DIR.mkdir(exist_ok=True)
 MODELS_DIR = Path("models/best_models")
 ZOO_RESULTS = MODELS_DIR / "zoo" / "best_model_results.parquet"
 TRANSFORMER_RESULTS = MODELS_DIR / "transformer" / "best_model_results.parquet"
+ZOO_CHECKPOINT = MODELS_DIR / "zoo" / "best_model.ckpt"
+TRANSFORMER_CHECKPOINT = MODELS_DIR / "transformer" / "best_model.ckpt"
 
 
 def load_results() -> pl.DataFrame:
@@ -107,6 +113,176 @@ def calculate_results(results_df: pl.DataFrame) -> list[dict]:
     return results
 
 
+def find_all_model_checkpoints() -> list[dict]:
+    """
+    Find all model checkpoints and group by configuration.
+
+    Returns:
+        list[dict]: List of config dicts with model_type, model_dim, num_layers, and best checkpoint path.
+    """
+    models_base = Path("models")
+    configs = []
+
+    for model_type in ["zoo", "transformer"]:
+        model_dir = models_base / model_type
+        if not model_dir.exists():
+            continue
+
+        # Find all config directories (e.g., M128_L2_LR1e-04)
+        for config_dir in model_dir.iterdir():
+            if not config_dir.is_dir() or not config_dir.name.startswith("M"):
+                continue
+
+            # Parse config from directory name
+            match = re.match(r"M(\d+)_L(\d+)_LR", config_dir.name)
+            if not match:
+                continue
+
+            model_dim = int(match.group(1))
+            num_layers = int(match.group(2))
+
+            # Find best checkpoint (lowest val_loss)
+            checkpoints_dir = config_dir / "checkpoints"
+            if not checkpoints_dir.exists():
+                continue
+
+            checkpoint_files = list(checkpoints_dir.glob("*.ckpt"))
+            if not checkpoint_files:
+                continue
+
+            # Parse val_loss from filename and find best
+            best_checkpoint = None
+            best_val_loss = float("inf")
+
+            for ckpt_file in checkpoint_files:
+                # Parse: epoch=X-val_loss=Y.YYY.ckpt
+                val_loss_match = re.search(r"val_loss=([\d.]+?)\.ckpt", ckpt_file.name)
+                if val_loss_match:
+                    val_loss = float(val_loss_match.group(1))
+                    if val_loss < best_val_loss:
+                        best_val_loss = val_loss
+                        best_checkpoint = ckpt_file
+
+            if best_checkpoint:
+                # Find corresponding results file
+                results_file = best_checkpoint.with_suffix(".results.parquet")
+                if results_file.exists():
+                    configs.append(
+                        {
+                            "model_type": model_type,
+                            "model_dim": model_dim,
+                            "num_layers": num_layers,
+                            "checkpoint_path": str(best_checkpoint),
+                            "results_path": str(results_file),
+                            "val_loss": best_val_loss,
+                        }
+                    )
+
+    return configs
+
+
+def compute_model_metrics(checkpoint_path: str, model_type: str) -> dict:
+    """
+    Compute params and FLOPs for a single model checkpoint.
+
+    Args:
+        checkpoint_path (str): Path to checkpoint file.
+        model_type (str): 'zoo' or 'transformer'.
+
+    Returns:
+        dict: Metrics including params and inference_flops.
+    """
+    # Load model
+    lit_model = LitModel.load_from_checkpoint(checkpoint_path, map_location="cpu")
+    model = lit_model.model
+    model.eval()
+
+    # Create dummy input
+    if model_type == "transformer":
+        dummy_input = torch.randn(1, 22, 6)
+    else:  # zoo
+        dummy_input = torch.randn(1, 10, 11, 10)
+
+    # Calculate params
+    params = int(lit_model.hparams["params"])
+
+    # Calculate FLOPs
+    try:
+        flops_analysis = FlopCountAnalysis(model, dummy_input)
+        inference_flops = int(flops_analysis.total())
+    except Exception:
+        inference_flops = None
+
+    return {"params": params, "inference_flops": inference_flops}
+
+
+def compute_test_ade(results_path: str) -> float:
+    """
+    Compute test set ADE from results parquet file.
+
+    Args:
+        results_path (str): Path to results parquet file.
+
+    Returns:
+        float: Test set ADE in yards.
+    """
+    df = pl.read_parquet(results_path)
+    test_df = df.filter((pl.col("dataset_split") == "test") & (pl.col("mirrored") == False))
+
+    ade = test_df.select(
+        pl.map_groups(
+            exprs=["tackle_x", "tackle_y", "tackle_x_pred", "tackle_y_pred"],
+            function=lambda ls: calculate_ade(*ls),
+            returns_scalar=True,
+        )
+    ).item()
+
+    return float(ade)
+
+
+def compute_model_comparison() -> list[dict]:
+    """
+    Compute comprehensive comparison of all trained models.
+
+    Returns:
+        list[dict]: List of model configs with params, FLOPs, and test ADE.
+    """
+    print("\nComputing comprehensive model comparison...")
+
+    # Find all checkpoints
+    configs = find_all_model_checkpoints()
+    print(f"  Found {len(configs)} model configurations")
+
+    results = []
+
+    for i, config in enumerate(configs, 1):
+        print(
+            f"  [{i}/{len(configs)}] Processing {config['model_type']} "
+            f"M{config['model_dim']}_L{config['num_layers']}..."
+        )
+
+        # Compute metrics
+        metrics = compute_model_metrics(config["checkpoint_path"], config["model_type"])
+        test_ade = compute_test_ade(config["results_path"])
+
+        results.append(
+            {
+                "model_type": config["model_type"],
+                "model_dim": config["model_dim"],
+                "num_layers": config["num_layers"],
+                "params": metrics["params"],
+                "inference_flops": metrics["inference_flops"],
+                "test_ade_yards": round(test_ade, 2),
+                "val_loss": round(config["val_loss"], 3),
+            }
+        )
+
+    # Sort by model_type, then params
+    results.sort(key=lambda x: (x["model_type"], x["params"]))
+
+    return results
+
+
 def main():
     """Generate results summary."""
     print("=" * 60)
@@ -116,12 +292,18 @@ def main():
     results_df = load_results()
     results = calculate_results(results_df)
 
-    # Save JSON
+    # Save results JSON
     json_path = RESULTS_DIR / "results.json"
     with open(json_path, "w") as f:
         json.dump(results, f, indent=2)
-
     print(f"\n✓ Saved: {json_path}")
+
+    # Compute and save comprehensive model comparison
+    model_comparison = compute_model_comparison()
+    comparison_path = RESULTS_DIR / "model_comparison.json"
+    with open(comparison_path, "w") as f:
+        json.dump(model_comparison, f, indent=2)
+    print(f"\n✓ Saved: {comparison_path} ({len(model_comparison)} models)")
 
     print("\n" + "=" * 60)
     print("COMPLETE")

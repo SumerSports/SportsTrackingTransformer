@@ -17,6 +17,7 @@ dependencies = [
     "seaborn>=0.13.2",
     "plotly>=5.24.0",
     "nbformat>=5.10.4",
+    "fvcore>=0.1.5",
 ]
 
 [tool.ruff]

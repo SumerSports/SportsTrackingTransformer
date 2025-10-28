@@ -152,6 +152,8 @@ class TheZooArchitecture(nn.Module):
         model_dim: int = 128,
         num_layers: int = 3,
         dropout: float = 0.3,
+        num_offense: int = 10,
+        num_defense: int = 11,
     ):
         """
         Initialize the TheZooArchitecture.
@@ -161,6 +163,8 @@ class TheZooArchitecture(nn.Module):
             model_dim (int): Dimension of the model.
             num_layers (int): Number of convolutional layers.
             dropout (float): Dropout rate.
+            num_offense (int): Number of offensive players (default: 10 for NFL).
+            num_defense (int): Number of defensive players (default: 11 for NFL).
         """
         super().__init__()
         self.hyperparams = {
@@ -223,6 +227,13 @@ class TheZooArchitecture(nn.Module):
             )
         )
 
+        # Pooling layers for collapsing offensive and defensive dimensions
+        # Created in __init__ (not forward()) so fvcore can trace FLOPs
+        self.pool_offense_max = nn.MaxPool2d((1, num_offense))
+        self.pool_offense_avg = nn.AvgPool2d((1, num_offense))
+        self.pool_defense_max = nn.MaxPool1d(num_defense)
+        self.pool_defense_avg = nn.AvgPool1d(num_defense)
+
     def forward(self, x: Tensor) -> Tensor:
         """
         Forward pass of the TheZooArchitecture.
@@ -244,12 +255,12 @@ class TheZooArchitecture(nn.Module):
         # apply first block, pool and collapse offensive dimension
         x = self.ff_block1(x.permute(0, 3, 2, 1))  # [B,O,D,M] -> [B,M,D,O]
         # Zoo Authors mentioned using a weighted sum of max and avg pooling helped most (experimentally verified hparam)
-        x = nn.MaxPool2d((1, O))(x) * 0.3 + nn.AvgPool2d((1, O))(x) * 0.7  # [B,M,D,O] -> [B,M,D,1]
+        x = self.pool_offense_max(x) * 0.3 + self.pool_offense_avg(x) * 0.7  # [B,M,D,O] -> [B,M,D,1]
         x = x.squeeze(-1)  # [B,M,D,1] -> [B,M,D]
 
         # apply second block, pool and collapse defensive dimension
         x = self.ff_block2(x)  # [B,M,D] -> [B,M,D]
-        x = nn.MaxPool1d(D)(x) * 0.3 + nn.AvgPool1d(D)(x) * 0.7  # [B,M,D] -> [B,M,1]
+        x = self.pool_defense_max(x) * 0.3 + self.pool_defense_avg(x) * 0.7  # [B,M,D] -> [B,M,1]
         x = x.squeeze(-1)  # [B,M,1] -> [B,M]
 
         # apply decoder
@@ -287,9 +298,21 @@ class LitModel(LightningModule):
         self.model_type = model_type.lower()
         self.model_class = SportsTransformer if self.model_type == "transformer" else TheZooArchitecture
         self.feature_len = 6 if self.model_type == "transformer" else 10
-        self.model = self.model_class(
-            feature_len=self.feature_len, model_dim=model_dim, num_layers=num_layers, dropout=dropout
-        )
+
+        # Initialize model with architecture-specific parameters
+        if self.model_type == "transformer":
+            self.model = self.model_class(
+                feature_len=self.feature_len, model_dim=model_dim, num_layers=num_layers, dropout=dropout
+            )
+        else:  # zoo
+            self.model = self.model_class(
+                feature_len=self.feature_len,
+                model_dim=model_dim,
+                num_layers=num_layers,
+                dropout=dropout,
+                num_offense=10,  # NFL standard
+                num_defense=11,  # NFL standard
+            )
         self.example_input_array = (
             torch.randn((batch_size, 22, self.feature_len))
             if self.model_type == "transformer"
