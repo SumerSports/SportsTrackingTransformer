@@ -1,0 +1,2 @@
+# This directory contains data files managed by DVC
+# Run `uv run dvc repro` to download and process the data

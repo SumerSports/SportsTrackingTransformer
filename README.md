@@ -42,12 +42,11 @@ After cloning the repo and opening a new terminal inside the repo workspace, per
 The full pipeline is managed by DVC. To reproduce from scratch:
 
 ```bash
-# Download data (requires Kaggle credentials)
-dvc pull data/nfl-big-data-bowl-2024.zip
-
-# Run full pipeline
-dvc repro
+# Run full pipeline (downloads data from GitHub releases)
+uv run dvc repro
 ```
+
+**Note:** The original NFL Big Data Bowl 2024 dataset was removed from Kaggle by the host. For reproducibility, we've hosted the dataset in [GitHub Releases](https://github.com/SumerSports/SportsTrackingTransformer/releases/tag/data-v1.0). The DVC pipeline automatically downloads it from there.
 
 Individual stages:
 ```bash
