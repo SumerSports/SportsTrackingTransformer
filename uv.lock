@@ -198,19 +198,6 @@ wheels = [
 ]
 
 [[package]]
-name = "bleach"
-version = "6.1.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "six" },
-    { name = "webencodings" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/6d/10/77f32b088738f40d4f5be801daa5f327879eadd4562f36a2b5ab975ae571/bleach-6.1.0.tar.gz", hash = "sha256:0a31f1837963c41d46bbf1331b8778e1308ea0791db03cc4e7357b97cf42a8fe", size = 202119, upload-time = "2023-10-06T19:30:51.304Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ea/63/da7237f805089ecc28a3f36bca6a21c31fcbc2eb380f3b8f1be3312abd14/bleach-6.1.0-py3-none-any.whl", hash = "sha256:3225f354cfc436b9789c66c4ee030194bee0568fbf9cbdad3bc8b5c26c5f12b6", size = 162750, upload-time = "2023-10-06T19:30:49.408Z" },
-]
-
-[[package]]
 name = "celery"
 version = "5.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1100,22 +1087,6 @@ wheels = [
 ]
 
 [[package]]
-name = "kaggle"
-version = "1.6.17"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "bleach" },
-    { name = "certifi" },
-    { name = "python-dateutil" },
-    { name = "python-slugify" },
-    { name = "requests" },
-    { name = "six" },
-    { name = "tqdm" },
-    { name = "urllib3" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/66/e3/c775e2213bac0ac1f1fd601d1c915d13934c5944cbff153ede6584acab50/kaggle-1.6.17.tar.gz", hash = "sha256:439a7dea1d5039f320fd6ad5ec21b688dcfa70d405cb42095b81f41edc401b81", size = 82692, upload-time = "2024-07-24T19:08:19.194Z" }
-
-[[package]]
 name = "kiwisolver"
 version = "1.4.7"
 source = { registry = "https://pypi.org/simple" }
@@ -1852,18 +1823,6 @@ wheels = [
 ]
 
 [[package]]
-name = "python-slugify"
-version = "8.0.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "text-unidecode" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/87/c7/5e1547c44e31da50a460df93af11a535ace568ef89d7a811069ead340c4a/python-slugify-8.0.4.tar.gz", hash = "sha256:59202371d1d05b54a9e7720c5e038f928f45daaffe41dd10822f3907b937c856", size = 10921, upload-time = "2024-02-08T18:32:45.488Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a4/62/02da182e544a51a5c3ccf4b03ab79df279f9c60c5e82d5e8bec7ca26ac11/python_slugify-8.0.4-py2.py3-none-any.whl", hash = "sha256:276540b79961052b66b7d116620b36518847f52d5fd9e3a70164fc8c50faa6b8", size = 10051, upload-time = "2024-02-08T18:32:43.911Z" },
-]
-
-[[package]]
 name = "pytorch-lightning"
 version = "2.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2162,7 +2121,6 @@ dependencies = [
     { name = "dvc" },
     { name = "fvcore" },
     { name = "ipykernel" },
-    { name = "kaggle" },
     { name = "lightning" },
     { name = "nbformat" },
     { name = "plotly" },
@@ -2179,7 +2137,6 @@ requires-dist = [
     { name = "dvc", specifier = ">=3.54.1" },
     { name = "fvcore", specifier = ">=0.1.5" },
     { name = "ipykernel", specifier = ">=6.29.5" },
-    { name = "kaggle", specifier = ">=1.6.17" },
     { name = "lightning", specifier = ">=2.4.0" },
     { name = "nbformat", specifier = ">=5.10.4" },
     { name = "plotly", specifier = ">=5.24.0" },
@@ -2295,15 +2252,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/87/56/ab275c2b56a5e2342568838f0d5e3e66a32354adcc159b495e374cda43f5/termcolor-3.2.0.tar.gz", hash = "sha256:610e6456feec42c4bcd28934a8c87a06c3fa28b01561d46aa09a9881b8622c58", size = 14423, upload-time = "2025-10-25T19:11:42.586Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f9/d5/141f53d7c1eb2a80e6d3e9a390228c3222c27705cbe7f048d3623053f3ca/termcolor-3.2.0-py3-none-any.whl", hash = "sha256:a10343879eba4da819353c55cb8049b0933890c2ebf9ad5d3ecd2bb32ea96ea6", size = 7698, upload-time = "2025-10-25T19:11:41.536Z" },
-]
-
-[[package]]
-name = "text-unidecode"
-version = "1.3"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ab/e2/e9a00f0ccb71718418230718b3d900e71a5d16e701a3dae079a21e9cd8f8/text-unidecode-1.3.tar.gz", hash = "sha256:bad6603bb14d279193107714b288be206cac565dfa49aa5b105294dd5c4aab93", size = 76885, upload-time = "2019-08-30T21:36:45.405Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/a5/c0b6468d3824fe3fde30dbb5e1f687b291608f9473681bbf7dabbf5a87d7/text_unidecode-1.3-py2.py3-none-any.whl", hash = "sha256:1311f10e8b895935241623731c2ba64f4c455287888b18189350b67134a822e8", size = 78154, upload-time = "2019-08-30T21:37:03.543Z" },
 ]
 
 [[package]]
@@ -2479,15 +2427,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/6c/63/53559446a878410fc5a5974feb13d31d78d752eb18aeba59c7fef1af7598/wcwidth-0.2.13.tar.gz", hash = "sha256:72ea0c06399eb286d978fdedb6923a9eb47e1c486ce63e9b4e64fc18303972b5", size = 101301, upload-time = "2024-01-06T02:10:57.829Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fd/84/fd2ba7aafacbad3c4201d395674fc6348826569da3c0937e75505ead3528/wcwidth-0.2.13-py2.py3-none-any.whl", hash = "sha256:3da69048e4540d84af32131829ff948f1e022c1c6bdb8d6102117aac784f6859", size = 34166, upload-time = "2024-01-06T02:10:55.763Z" },
-]
-
-[[package]]
-name = "webencodings"
-version = "0.5.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0b/02/ae6ceac1baeda530866a85075641cec12989bd8d31af6d5ab4a3e8c92f47/webencodings-0.5.1.tar.gz", hash = "sha256:b36a1c245f2d304965eb4e0a82848379241dc04b865afcc4aab16748587e1923", size = 9721, upload-time = "2017-04-05T20:21:34.189Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f4/24/2a3e3df732393fed8b3ebf2ec078f05546de641fe1b667ee316ec1dcf3b7/webencodings-0.5.1-py2.py3-none-any.whl", hash = "sha256:a0af1213f3c2226497a97e2b3aa01a7e4bee4f403f95be16fc9acd2947514a78", size = 11774, upload-time = "2017-04-05T20:21:32.581Z" },
 ]
 
 [[package]]

@@ -20,6 +20,12 @@ Our key contributions include:
 
 We hope this work catalyzes a shift in sports analytics research methodologies, advancing our ability to derive meaningful insights from tracking data across various sports domains.
 
+## Paper and Workshop Materials
+
+This repository accompanies our research paper:
+- **Full Paper**: [`Attention is All You Need, for Sports Tracking Data.pdf`](./Attention%20is%20All%20You%20Need,%20for%20Sports%20Tracking%20Data.pdf)
+- **Workshop Slides**: [`CMSAC Workshop Notes.pdf`](./CMSAC%20Workshop%20Notes.pdf) - Presented at the Carnegie Mellon Sports Analytics Conference
+
 ## Getting Started
 
 This repo uses `uv` to manage python version, environment, and dependencies. Start off by [installing it](https://docs.astral.sh/uv/getting-started/installation/):
@@ -42,26 +48,27 @@ After cloning the repo and opening a new terminal inside the repo workspace, per
 The full pipeline is managed by DVC. To reproduce from scratch:
 
 ```bash
-# Run full pipeline (downloads data from GitHub releases)
+# Run full pipeline (downloads data, trains models, generates results)
 uv run dvc repro
 ```
 
+This runs all stages including training 24 model configurations (~8-12 hours on GPU).
+
 **Note:** The original NFL Big Data Bowl 2024 dataset was removed from Kaggle by the host. For reproducibility, we've hosted the dataset in [GitHub Releases](https://github.com/SumerSports/SportsTrackingTransformer/releases/tag/data-v1.0). The DVC pipeline automatically downloads it from there.
 
-Individual stages:
+
+## Pre-trained Models
+
+Pre-trained models are available in [GitHub Releases](https://github.com/SumerSports/SportsTrackingTransformer/releases/tag/models-v1.0) (135MB compressed):
+- Zoo Architecture best model (M128_L2)
+- Transformer best model (M512_L2)
+- Test set predictions for both models
+
+Download and extract to skip training:
 ```bash
-# Data preparation
-uv run python src/prep_data.py
-
-# Dataset preprocessing (takes 1-2 hours)
-uv run python src/datasets.py
-
-# Train models
-uv run python src/train.py --model_type zoo --device 0
-uv run python src/train.py --model_type transformer --device 0
-
-# Select best models
-uv run python src/pick_best_models.py
+wget https://github.com/SumerSports/SportsTrackingTransformer/releases/download/models-v1.0/best_models.tar.gz
+tar -xzf best_models.tar.gz
+rm best_models.tar.gz
 ```
 
 ## Results
@@ -69,9 +76,9 @@ uv run python src/pick_best_models.py
 Pre-computed results are available in the `results/` directory. See [`results/README.md`](results/README.md) for detailed performance metrics.
 
 **Quick Summary (Test Set):**
-- Zoo Architecture: 5.73 yards ADE
-- Transformer: 4.58 yards ADE
-- **Improvement: 1.15 yards (20.1%)**
+- Zoo Architecture: 5.71 yards ADE
+- Transformer: 4.57 yards ADE
+- **Improvement: 1.14 yards (20.0%)**
 
 ## Analysis
 

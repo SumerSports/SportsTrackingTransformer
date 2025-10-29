@@ -35,7 +35,7 @@ def find_best_checkpoint(root_dir: Path) -> dict[str, Path]:
 
     # Traverse through each model's directory
     for model_dir in root_path.iterdir():
-        if model_dir.is_dir():
+        if model_dir.is_dir() and model_dir.name != "best_models":
             # Model name is the directory name
             model_name = model_dir.name
             checkpoints = list(model_dir.rglob("*.ckpt"))

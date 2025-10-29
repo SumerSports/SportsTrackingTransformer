@@ -68,6 +68,23 @@ stages:
     - models/best_models/:
         cache: false
         persist: false
+
+  generate_results:
+    cmd: uv run python src/generate_results_summary.py
+
+    deps:
+    - src/generate_results_summary.py
+    - src/metrics.py
+    - src/models.py
+    - models/best_models/
+    - data/split_prepped_data/
+    outs:
+    - results/results.csv:
+        cache: false
+    - results/model_comparison.json:
+        cache: false
+    - results/frame_difference_plot.png:
+        cache: false
 artifacts:
   best_zoo_model:
     path: models/best_models/zoo/best_model.ckpt
