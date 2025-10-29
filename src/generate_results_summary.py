@@ -10,13 +10,49 @@ import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import polars as pl
 import seaborn as sns
 import torch
 from fvcore.nn import FlopCountAnalysis
 
-from metrics import calculate_ade
 from models import LitModel
+
+
+def calculate_ade(
+    x: pl.Series | np.ndarray,
+    y: pl.Series | np.ndarray,
+    x_pred: pl.Series | np.ndarray,
+    y_pred: pl.Series | np.ndarray,
+) -> float:
+    """
+    Calculate Average Displacement Error (ADE).
+
+    ADE = mean Euclidean distance between predicted and true (x, y) locations.
+    Standard metric for trajectory prediction, pose estimation, and spatial tasks.
+
+    Formula: mean(sqrt((x_pred - x)² + (y_pred - y)²))
+
+    Args:
+        x: True x coordinates
+        y: True y coordinates
+        x_pred: Predicted x coordinates
+        y_pred: Predicted y coordinates
+
+    Returns:
+        Average displacement error in the same units as input coordinates (yards)
+    """
+    if isinstance(x, pl.Series):
+        x = x.to_numpy()
+    if isinstance(y, pl.Series):
+        y = y.to_numpy()
+    if isinstance(x_pred, pl.Series):
+        x_pred = x_pred.to_numpy()
+    if isinstance(y_pred, pl.Series):
+        y_pred = y_pred.to_numpy()
+
+    distances = np.sqrt((x_pred - x) ** 2 + (y_pred - y) ** 2)
+    return float(np.mean(distances))
 
 RESULTS_DIR = Path("results")
 RESULTS_DIR.mkdir(exist_ok=True)
@@ -50,7 +86,16 @@ def load_results() -> pl.DataFrame:
     )
 
     # Filter to mirrored=False to avoid double-counting predictions
-    # (mirrored data is just augmentation - same play, flipped horizontally)
+    #
+    # During training, we augment data by horizontally flipping each play (data augmentation).
+    # This gives us 2× more training examples from the same data, helping the model generalize.
+    #
+    # Example: Original play has ball carrier running right → tackle at x=30, y=25
+    #          Mirrored play has ball carrier running left → tackle at x=70, y=25 (x is flipped)
+    #
+    # When evaluating, we only count each unique play once to avoid inflating our metrics.
+    # Both the original and mirrored versions produce predictions, but we only evaluate
+    # the original (mirrored=False) to get true performance on unique plays.
     results_df = results_df.filter(pl.col("mirrored") == False)
     print(f"  Loaded {len(results_df):,} predictions (mirrored=False only)")
     return results_df

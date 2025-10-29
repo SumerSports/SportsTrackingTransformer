@@ -184,6 +184,20 @@ class BDB2024_Dataset(Dataset):
         Raises:
             AssertionError: If the output shape is not as expected
         """
+        # Features fed to the Transformer model (per player):
+        # - x_rel, y_rel: Player position relative to ball carrier (in yards)
+        #                 Using relative positions makes the model learn spatial relationships
+        #                 (e.g., "defender 5 yards ahead") rather than absolute field positions
+        # - vx, vy: Player velocity in x and y directions (yards/second)
+        #           Velocity helps predict where players will be, not just where they are now
+        # - side: Offensive (+1) or Defensive (-1) team indicator
+        #         Helps model learn different roles (e.g., blockers vs. tacklers)
+        # - is_ball_carrier: Binary flag (1 = has ball, 0 = doesn't)
+        #                    Critical for identifying the target player being tackled
+        #
+        # Shape: (22 players, 6 features)
+        # The Transformer's self-attention mechanism will learn to focus on relevant players
+        # (e.g., nearby defenders, blocking assignments) automatically during training.
         features = ["x_rel", "y_rel", "vx", "vy", "side", "is_ball_carrier"]
         x = frame_df[features].to_numpy(dtype=np.float32)
         assert x.shape == (22, len(features)), f"Expected shape (22, {len(features)}), got {x.shape}"
@@ -237,6 +251,26 @@ class BDB2024_Dataset(Dataset):
             axis=-1,
         )
 
+        # Zoo Architecture expects shape: (10 offensive players, 11 defensive players, 10 interaction features)
+        #
+        # This creates a grid where each cell [i, j] represents the interaction between
+        # offensive player i and defensive player j:
+        #
+        #           Defender 1    Defender 2    ...    Defender 11
+        # Offense 1  [10 feats]    [10 feats]    ...    [10 feats]
+        # Offense 2  [10 feats]    [10 feats]    ...    [10 feats]
+        #   ...         ...           ...        ...       ...
+        # Offense 10 [10 feats]    [10 feats]    ...    [10 feats]
+        #
+        # The 10 features per interaction include:
+        # - Defensive player velocity (2 features: vx, vy)
+        # - Relative position: defender - ball carrier (2 features: dx, dy)
+        # - Relative velocity: defender - ball carrier (2 features: dvx, dvy)
+        # - Relative position: offensive blocker - defender (2 features: dx, dy)
+        # - Relative velocity: offensive blocker - defender (2 features: dvx, dvy)
+        #
+        # This grid structure allows the Zoo model to learn pairwise offensive-defensive interactions,
+        # but limits its ability to see complex multi-player patterns (e.g., 3 defenders converging).
         assert x.shape == (10, 11, 10), f"Expected shape (10, 11, 10), got {x.shape}"
         return x
 

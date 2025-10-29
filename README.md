@@ -73,16 +73,22 @@ rm best_models.tar.gz
 
 ## Results
 
-Pre-computed results are available in the `results/` directory. See [`results/README.md`](results/README.md) for detailed performance metrics.
+Pre-computed results are available in the `results/` directory. See [`results/RESULTS.md`](results/RESULTS.md) for:
+- Detailed explanation of the ADE (Average Displacement Error) metric
+- Comprehensive model comparison across all 24 trained configurations
+- Per-event performance breakdown
+- Analysis by frames before tackle
 
 **Quick Summary (Test Set):**
 - Zoo Architecture: 5.71 yards ADE
 - Transformer: 4.57 yards ADE
 - **Improvement: 1.14 yards (20.0%)**
 
+**What is ADE?** Average Displacement Error measures the mean Euclidean distance (in yards) between predicted and actual tackle locations. Lower is better. See [`results/RESULTS.md`](results/RESULTS.md) for the full mathematical definition and interpretation.
+
 ## Analysis
 
-The notebook `results/results_analysis.ipynb` contains visualizations and detailed analysis.
+The notebook [`results/animated_results_visualization.ipynb`](results/animated_results_visualization.ipynb) contains interactive visualizations and detailed analysis of model predictions.
 
 ## Citation
 

@@ -20,7 +20,6 @@ Functions:
 
 """
 
-from argparse import ArgumentParser
 from pathlib import Path
 
 import polars as pl
