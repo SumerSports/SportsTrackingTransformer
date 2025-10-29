@@ -1,11 +1,12 @@
 stages:
   get_bdb_2024_data:
-    cmd: kaggle competitions download -c nfl-big-data-bowl-2024 -p data/
+    # Download from GitHub releases since Kaggle dataset was removed by host
+    cmd: wget -q https://github.com/SumerSports/SportsTrackingTransformer/releases/download/data-v1.0/nfl-big-data-bowl-2024.zip -O data/nfl-big-data-bowl-2024.zip
     outs:
     - data/nfl-big-data-bowl-2024.zip
 
   unzip_bdb_2024_data:
-    cmd: unzip data/nfl-big-data-bowl-2024.zip -d data/bdb_2024/
+    cmd: unzip -j data/nfl-big-data-bowl-2024.zip '2024/*' -d data/bdb_2024/
     deps:
     - data/nfl-big-data-bowl-2024.zip
     outs:
@@ -67,6 +68,23 @@ stages:
     - models/best_models/:
         cache: false
         persist: false
+
+  generate_results:
+    cmd: uv run python src/generate_results_summary.py
+
+    deps:
+    - src/generate_results_summary.py
+    - src/metrics.py
+    - src/models.py
+    - models/best_models/
+    - data/split_prepped_data/
+    outs:
+    - results/results.csv:
+        cache: false
+    - results/model_comparison.json:
+        cache: false
+    - results/frame_difference_plot.png:
+        cache: false
 artifacts:
   best_zoo_model:
     path: models/best_models/zoo/best_model.ckpt

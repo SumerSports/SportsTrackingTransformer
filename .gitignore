@@ -10,3 +10,7 @@ wheels/
 .venv
 /lines
 src/sandbox.ipynb
+
+# data (managed by DVC)
+/data/*
+!/data/.gitkeep

@@ -258,7 +258,7 @@ def train_model(
     # Generate and save predictions for the best model
     best_ckpt_path = Path(trainer.checkpoint_callback.best_model_path)
     preds_df = predict_model_as_df(lit_model, best_ckpt_path, devices[:1])
-    preds_df.write_parquet(best_ckpt_path.with_suffix(".results.parquet"))
+    preds_df.write_parquet(best_ckpt_path.with_suffix(".results.parquet"), compression="zstd", compression_level=22)
 
     return lit_model
 
@@ -274,7 +274,13 @@ def main(args):
     and trains models for each combination. It supports both exhaustive grid search
     and random search based on the provided arguments.
     """
-    # Define hyperparameter search space
+    # Hyperparameter search space:
+    # - lrs: Learning rate (1e-4 based on prior experimentation)
+    # - model_dims: Model width (32, 128, 512) - # size of internal vector representation for each player in each layer
+    # - num_layers: Model depth (1, 2, 4, 8) - number of stacked layers
+    #
+    # Total: 12 configurations per architecture × 2 architectures = 24 models
+
     lrs = [1e-4]
     model_dims = [32, 128, 512]
     num_layers = [1, 2, 4, 8]

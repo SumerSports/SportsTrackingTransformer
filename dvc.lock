@@ -1,19 +1,21 @@
 schema: '2.0'
 stages:
   get_bdb_2024_data:
-    cmd: kaggle competitions download -c nfl-big-data-bowl-2024 -p data/
+    cmd: wget -q 
+      https://github.com/SumerSports/SportsTrackingTransformer/releases/download/data-v1.0/nfl-big-data-bowl-2024.zip
+      -O data/nfl-big-data-bowl-2024.zip
     outs:
     - path: data/nfl-big-data-bowl-2024.zip
       hash: md5
-      md5: d39d15812f2c6aa9450eaef71f71e601
-      size: 292799779
+      md5: 3cdf48297d525758ea582060821dd0ab
+      size: 293090157
   unzip_bdb_2024_data:
-    cmd: unzip data/nfl-big-data-bowl-2024.zip -d data/bdb_2024/
+    cmd: unzip -j data/nfl-big-data-bowl-2024.zip '2024/*' -d data/bdb_2024/
     deps:
     - path: data/nfl-big-data-bowl-2024.zip
       hash: md5
-      md5: d39d15812f2c6aa9450eaef71f71e601
-      size: 292799779
+      md5: 3cdf48297d525758ea582060821dd0ab
+      size: 293090157
     outs:
     - path: data/bdb_2024
       hash: md5
@@ -30,8 +32,8 @@ stages:
       nfiles: 13
     - path: src/prep_data.py
       hash: md5
-      md5: 94f682a1aef91622bc7a1bdfca0e1bee
-      size: 14690
+      md5: 3244cae1c7ebb59fd4ef31d6cd3743c2
+      size: 14713
     outs:
     - path: data/split_prepped_data/
       hash: md5
@@ -53,15 +55,15 @@ stages:
     outs:
     - path: data/datasets/
       hash: md5
-      md5: 7e5c358b2cc96f0ef90feba4d4f319b1.dir
-      size: 36808213462
-      nfiles: 12
+      md5: 20e1adf9410329d9d5fe1e1462f0ee19.dir
+      size: 18404106731
+      nfiles: 6
   train_zoo_models:
     cmd: uv run python src/train.py --model_type zoo --device 0
     deps:
     - path: data/datasets/zoo/
       hash: md5
-      md5: e0c6bb559824f77710178d27f9cec4a9.dir
+      md5: a4efb7436bae82d4254001e95406017b.dir
       size: 11254026456
       nfiles: 3
     - path: src/datasets.py
@@ -70,24 +72,24 @@ stages:
       size: 10137
     - path: src/models.py
       hash: md5
-      md5: 09e05d29c28218ac2483f929e3118990
-      size: 14086
+      md5: 65080f99c68a2edc27bed0807900d426
+      size: 15310
     - path: src/train.py
       hash: md5
-      md5: 55bdf380852df4d6648af59dda3351ad
-      size: 11960
+      md5: a7658a66133897070b512d6759e954f1
+      size: 12002
     outs:
     - path: models/zoo/
       hash: md5
-      md5: f51824cae0ea8c0a266e495833fec65d.dir
-      size: 1164274233
-      nfiles: 122
+      md5: c5bd1f5b680dc8a08bb5414c8774f06d.dir
+      size: 1242287897
+      nfiles: 138
   train_transformer_models:
     cmd: uv run python src/train.py --model_type transformer --device 0
     deps:
     - path: data/datasets/transformer
       hash: md5
-      md5: 3f42dcf10223ff8b88b426d75e678f26.dir
+      md5: 4c507904f3b48d5d0c9703939f19ef3a.dir
       size: 7150080275
       nfiles: 3
     - path: src/datasets.py
@@ -96,46 +98,84 @@ stages:
       size: 10137
     - path: src/models.py
       hash: md5
-      md5: 09e05d29c28218ac2483f929e3118990
-      size: 14086
+      md5: 65080f99c68a2edc27bed0807900d426
+      size: 15310
     - path: src/train.py
       hash: md5
-      md5: 55bdf380852df4d6648af59dda3351ad
-      size: 11960
+      md5: a7658a66133897070b512d6759e954f1
+      size: 12002
     outs:
     - path: models/transformer/
       hash: md5
-      md5: 3874c675a8cb341f107ea5829a95eb35.dir
-      size: 1721799628
-      nfiles: 117
+      md5: a139961d47a1509c1dffb8fe3edb9d8e.dir
+      size: 1748856881
+      nfiles: 133
   pick_best_models:
     cmd: uv run python src/pick_best_models.py
     deps:
     - path: models/transformer/
       hash: md5
-      md5: 3874c675a8cb341f107ea5829a95eb35.dir
-      size: 1721799628
-      nfiles: 117
+      md5: a139961d47a1509c1dffb8fe3edb9d8e.dir
+      size: 1748856881
+      nfiles: 133
     - path: models/zoo/
       hash: md5
-      md5: f51824cae0ea8c0a266e495833fec65d.dir
-      size: 1164274233
-      nfiles: 122
+      md5: c5bd1f5b680dc8a08bb5414c8774f06d.dir
+      size: 1242287897
+      nfiles: 138
     - path: src/datasets.py
       hash: md5
       md5: 1cb7940a2d1f068b4c55f509df0cab56
       size: 10137
     - path: src/models.py
       hash: md5
-      md5: 09e05d29c28218ac2483f929e3118990
-      size: 14086
+      md5: 65080f99c68a2edc27bed0807900d426
+      size: 15310
     - path: src/pick_best_models.py
       hash: md5
-      md5: 8334b57aaf02585a32decc1d93944428
-      size: 3176
+      md5: 526da8c378361aacac559759b01198f7
+      size: 3212
     outs:
     - path: models/best_models/
       hash: md5
-      md5: acd9753472d3f159a8ea3f9c3930560d.dir
-      size: 150873868
+      md5: a33fb47fb8683ba1fd9fb5df5ddcd442.dir
+      size: 147202233
       nfiles: 4
+  generate_results:
+    cmd: uv run python src/generate_results_summary.py
+    deps:
+    - path: data/split_prepped_data/
+      hash: md5
+      md5: 4b678a6cef636cd4b359ab7498186897.dir
+      size: 1023797370
+      nfiles: 6
+    - path: models/best_models/
+      hash: md5
+      md5: a33fb47fb8683ba1fd9fb5df5ddcd442.dir
+      size: 147202233
+      nfiles: 4
+    - path: src/generate_results_summary.py
+      hash: md5
+      md5: 64872e20de0850256536517bff4f0c8d
+      size: 16107
+    - path: src/metrics.py
+      hash: md5
+      md5: 19c250314b56f936653d87abe6db7564
+      size: 1712
+    - path: src/models.py
+      hash: md5
+      md5: 65080f99c68a2edc27bed0807900d426
+      size: 15310
+    outs:
+    - path: results/frame_difference_plot.png
+      hash: md5
+      md5: c0817f2cf5b67a215429653acc9ee07d
+      size: 239288
+    - path: results/model_comparison.json
+      hash: md5
+      md5: 72602994a46f386251f2ea2699c43965
+      size: 4440
+    - path: results/results.csv
+      hash: md5
+      md5: 92307a40cf396c68dcf99955b4f8c6a5
+      size: 1283

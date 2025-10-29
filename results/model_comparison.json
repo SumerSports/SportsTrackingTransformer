@@ -1,0 +1,218 @@
+[
+  {
+    "model_type": "transformer",
+    "model_dim": 32,
+    "num_layers": 1,
+    "params": 14358,
+    "inference_flops": 286720,
+    "test_ade_yards": 5.13,
+    "val_loss": 2.872
+  },
+  {
+    "model_type": "transformer",
+    "model_dim": 32,
+    "num_layers": 2,
+    "params": 27062,
+    "inference_flops": 564096,
+    "test_ade_yards": 5.12,
+    "val_loss": 2.846
+  },
+  {
+    "model_type": "transformer",
+    "model_dim": 32,
+    "num_layers": 4,
+    "params": 52470,
+    "inference_flops": 1118848,
+    "test_ade_yards": 4.9,
+    "val_loss": 2.748
+  },
+  {
+    "model_type": "transformer",
+    "model_dim": 32,
+    "num_layers": 8,
+    "params": 103286,
+    "inference_flops": 2228352,
+    "test_ade_yards": 4.87,
+    "val_loss": 2.698
+  },
+  {
+    "model_type": "transformer",
+    "model_dim": 128,
+    "num_layers": 1,
+    "params": 220206,
+    "inference_flops": 4405480,
+    "test_ade_yards": 4.69,
+    "val_loss": 2.588
+  },
+  {
+    "model_type": "transformer",
+    "model_dim": 128,
+    "num_layers": 2,
+    "params": 418478,
+    "inference_flops": 8759016,
+    "test_ade_yards": 4.64,
+    "val_loss": 2.567
+  },
+  {
+    "model_type": "transformer",
+    "model_dim": 128,
+    "num_layers": 4,
+    "params": 815022,
+    "inference_flops": 17466088,
+    "test_ade_yards": 4.6,
+    "val_loss": 2.561
+  },
+  {
+    "model_type": "transformer",
+    "model_dim": 128,
+    "num_layers": 8,
+    "params": 1608110,
+    "inference_flops": 34880232,
+    "test_ade_yards": 4.65,
+    "val_loss": 2.577
+  },
+  {
+    "model_type": "transformer",
+    "model_dim": 512,
+    "num_layers": 1,
+    "params": 3485838,
+    "inference_flops": 69771400,
+    "test_ade_yards": 4.69,
+    "val_loss": 2.616
+  },
+  {
+    "model_type": "transformer",
+    "model_dim": 512,
+    "num_layers": 2,
+    "params": 6638222,
+    "inference_flops": 139090056,
+    "test_ade_yards": 4.57,
+    "val_loss": 2.554
+  },
+  {
+    "model_type": "transformer",
+    "model_dim": 512,
+    "num_layers": 4,
+    "params": 12942990,
+    "inference_flops": 277727368,
+    "test_ade_yards": 4.61,
+    "val_loss": 2.567
+  },
+  {
+    "model_type": "transformer",
+    "model_dim": 512,
+    "num_layers": 8,
+    "params": 25552526,
+    "inference_flops": 555001992,
+    "test_ade_yards": 4.66,
+    "val_loss": 2.588
+  },
+  {
+    "model_type": "zoo",
+    "model_dim": 32,
+    "num_layers": 1,
+    "params": 2910,
+    "inference_flops": 179920,
+    "test_ade_yards": 6.68,
+    "val_loss": 3.896
+  },
+  {
+    "model_type": "zoo",
+    "model_dim": 32,
+    "num_layers": 2,
+    "params": 5086,
+    "inference_flops": 304528,
+    "test_ade_yards": 6.22,
+    "val_loss": 3.566
+  },
+  {
+    "model_type": "zoo",
+    "model_dim": 32,
+    "num_layers": 4,
+    "params": 11678,
+    "inference_flops": 555920,
+    "test_ade_yards": 6.03,
+    "val_loss": 3.428
+  },
+  {
+    "model_type": "zoo",
+    "model_dim": 32,
+    "num_layers": 8,
+    "params": 24862,
+    "inference_flops": 1058704,
+    "test_ade_yards": 6.4,
+    "val_loss": 3.666
+  },
+  {
+    "model_type": "zoo",
+    "model_dim": 128,
+    "num_layers": 1,
+    "params": 39222,
+    "inference_flops": 2203000,
+    "test_ade_yards": 5.86,
+    "val_loss": 3.311
+  },
+  {
+    "model_type": "zoo",
+    "model_dim": 128,
+    "num_layers": 2,
+    "params": 72502,
+    "inference_flops": 4188280,
+    "test_ade_yards": 5.71,
+    "val_loss": 3.221
+  },
+  {
+    "model_type": "zoo",
+    "model_dim": 128,
+    "num_layers": 4,
+    "params": 172598,
+    "inference_flops": 8192120,
+    "test_ade_yards": 5.82,
+    "val_loss": 3.305
+  },
+  {
+    "model_type": "zoo",
+    "model_dim": 128,
+    "num_layers": 8,
+    "params": 372790,
+    "inference_flops": 16199800,
+    "test_ade_yards": 5.85,
+    "val_loss": 3.347
+  },
+  {
+    "model_type": "zoo",
+    "model_dim": 512,
+    "num_layers": 1,
+    "params": 599190,
+    "inference_flops": 32644120,
+    "test_ade_yards": 5.72,
+    "val_loss": 3.226
+  },
+  {
+    "model_type": "zoo",
+    "model_dim": 512,
+    "num_layers": 2,
+    "params": 1125526,
+    "inference_flops": 64374808,
+    "test_ade_yards": 5.76,
+    "val_loss": 3.282
+  },
+  {
+    "model_type": "zoo",
+    "model_dim": 512,
+    "num_layers": 4,
+    "params": 2705558,
+    "inference_flops": 128362520,
+    "test_ade_yards": 5.8,
+    "val_loss": 3.292
+  },
+  {
+    "model_type": "zoo",
+    "model_dim": 512,
+    "num_layers": 8,
+    "params": 5865622,
+    "inference_flops": 256337944,
+    "test_ade_yards": 5.93,
+    "val_loss": 3.374
+  }
+]

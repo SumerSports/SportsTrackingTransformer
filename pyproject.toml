@@ -9,7 +9,6 @@ dependencies = [
     "polars[numpy,pandas,plot,pyarrow,style]>=1.5.0",
     "lightning>=2.4.0",
     "dvc>=3.54.1",
-    "kaggle>=1.6.17",
     "tqdm>=4.66.5",
     "ipykernel>=6.29.5",
     "ruff>=0.6.3",
@@ -17,6 +16,7 @@ dependencies = [
     "seaborn>=0.13.2",
     "plotly>=5.24.0",
     "nbformat>=5.10.4",
+    "fvcore>=0.1.5",
 ]
 
 [tool.ruff]
