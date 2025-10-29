@@ -280,22 +280,13 @@ def main(args):
     # - Too large: Overfits (memorizes training plays, fails on new situations)
 
     lrs = [1e-4]  # Learning rate: controls how fast the model learns
-                  # - Too high: training becomes unstable, overshoots optimal weights
-                  # - Too low: takes forever to converge, may get stuck in local minima
-                  # We use 1e-4 (0.0001) based on prior experimentation
+    # - Too high: training becomes unstable, overshoots optimal weights
+    # - Too low: takes forever to converge, may get stuck in local minima
+    # We use 1e-4 (0.0001) based on prior experimentation
 
-    model_dims = [32, 128, 512]  # Model width: number of neurons per layer
-                                  # - 32: Lightweight, fast training, limited capacity
-                                  # - 128: Medium capacity, good for simpler patterns
-                                  # - 512: High capacity, can learn complex multi-player interactions
-                                  # Bigger models need more data to avoid overfitting
+    model_dims = [32, 128, 512]  # Model width: size of vector representation for each player
 
     num_layers = [1, 2, 4, 8]  # Model depth: number of stacked layers
-                                # - Shallow (1-2): Fast, learns simple patterns
-                                # - Deep (4-8): Can learn hierarchical abstractions
-                                #   e.g., Layer 1: "defenders nearby"
-                                #        Layer 2: "defensive formation collapsing"
-                                #        Layer 3: "tackle location based on convergence"
 
     # Total configurations: 1 lr × 3 model_dims × 4 num_layers = 12 per architecture
     # Training both Zoo and Transformer = 24 total models

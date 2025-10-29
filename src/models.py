@@ -146,14 +146,16 @@ class TheZooArchitecture(nn.Module):
     Based on: https://github.com/juancamilocampos/nfl-big-data-bowl-2020/blob/master/1st_place_zoo_solution_v2.ipynb
     """
 
+    # 10 offensive players and 11 defensive players
+    NUM_OFFENSE = 10
+    NUM_DEFENSE = 11
+
     def __init__(
         self,
         feature_len: int,
         model_dim: int = 128,
         num_layers: int = 3,
         dropout: float = 0.3,
-        num_offense: int = 10,
-        num_defense: int = 11,
     ):
         """
         Initialize the TheZooArchitecture.
@@ -163,8 +165,6 @@ class TheZooArchitecture(nn.Module):
             model_dim (int): Dimension of the model.
             num_layers (int): Number of convolutional layers.
             dropout (float): Dropout rate.
-            num_offense (int): Number of offensive players (default: 10 for NFL).
-            num_defense (int): Number of defensive players (default: 11 for NFL).
         """
         super().__init__()
         self.hyperparams = {
@@ -229,10 +229,10 @@ class TheZooArchitecture(nn.Module):
 
         # Pooling layers for collapsing offensive and defensive dimensions
         # Created in __init__ (not forward()) so fvcore can trace FLOPs
-        self.pool_offense_max = nn.MaxPool2d((1, num_offense))
-        self.pool_offense_avg = nn.AvgPool2d((1, num_offense))
-        self.pool_defense_max = nn.MaxPool1d(num_defense)
-        self.pool_defense_avg = nn.AvgPool1d(num_defense)
+        self.pool_offense_max = nn.MaxPool2d((1, self.NUM_OFFENSE))
+        self.pool_offense_avg = nn.AvgPool2d((1, self.NUM_OFFENSE))
+        self.pool_defense_max = nn.MaxPool1d(self.NUM_DEFENSE)
+        self.pool_defense_avg = nn.AvgPool1d(self.NUM_DEFENSE)
 
     def forward(self, x: Tensor) -> Tensor:
         """
@@ -300,19 +300,12 @@ class LitModel(LightningModule):
         self.feature_len = 6 if self.model_type == "transformer" else 10
 
         # Initialize model with architecture-specific parameters
-        if self.model_type == "transformer":
-            self.model = self.model_class(
-                feature_len=self.feature_len, model_dim=model_dim, num_layers=num_layers, dropout=dropout
-            )
-        else:  # zoo
-            self.model = self.model_class(
-                feature_len=self.feature_len,
-                model_dim=model_dim,
-                num_layers=num_layers,
-                dropout=dropout,
-                num_offense=10,  # NFL standard
-                num_defense=11,  # NFL standard
-            )
+        self.model = self.model_class(
+            feature_len=self.feature_len,
+            model_dim=model_dim,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
         self.example_input_array = (
             torch.randn((batch_size, 22, self.feature_len))
             if self.model_type == "transformer"
