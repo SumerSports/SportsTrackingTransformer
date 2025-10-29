@@ -101,6 +101,44 @@ def load_results() -> pl.DataFrame:
     return results_df
 
 
+def _calculate_ade_for_df(df: pl.DataFrame) -> float:
+    """
+    Helper to calculate ADE from a DataFrame with prediction columns.
+
+    Args:
+        df: DataFrame with columns: tackle_x, tackle_y, tackle_x_pred, tackle_y_pred
+
+    Returns:
+        ADE in yards, rounded to 2 decimal places
+    """
+    ade = df.select(
+        pl.map_groups(
+            exprs=["tackle_x", "tackle_y", "tackle_x_pred", "tackle_y_pred"],
+            function=lambda ls: calculate_ade(*ls),
+            returns_scalar=True,
+        )
+    ).item()
+    return round(ade, 2)
+
+
+def _calculate_improvement_metrics(zoo_ade: float, transformer_ade: float) -> tuple[float, float]:
+    """
+    Calculate improvement metrics comparing Zoo baseline to Transformer model.
+
+    Args:
+        zoo_ade: ADE for Zoo model (baseline)
+        transformer_ade: ADE for Transformer model
+
+    Returns:
+        Tuple of (improvement_pct, improvement_yards)
+        - improvement_pct: Percentage improvement (positive = better)
+        - improvement_yards: Absolute yards improvement
+    """
+    improvement_pct = round((zoo_ade - transformer_ade) / zoo_ade * 100, 1)
+    improvement_yards = round(zoo_ade - transformer_ade, 2)
+    return improvement_pct, improvement_yards
+
+
 def calculate_results(results_df: pl.DataFrame) -> list[dict]:
     """Calculate results for all splits and events."""
     print("\nCalculating results...")
@@ -115,19 +153,11 @@ def calculate_results(results_df: pl.DataFrame) -> list[dict]:
 
         for model_type in ["zoo", "transformer"]:
             model_df = split_df.filter(pl.col("model_type") == model_type)
+            row[model_type] = _calculate_ade_for_df(model_df)
 
-            ade = model_df.select(
-                pl.map_groups(
-                    exprs=["tackle_x", "tackle_y", "tackle_x_pred", "tackle_y_pred"],
-                    function=lambda ls: calculate_ade(*ls),
-                    returns_scalar=True,
-                )
-            ).item()
-
-            row[model_type] = round(ade, 2)
-
-        row["improvement_pct"] = round((row["zoo"] - row["transformer"]) / row["zoo"] * 100, 1)
-        row["improvement_yards"] = round(row["zoo"] - row["transformer"], 2)
+        row["improvement_pct"], row["improvement_yards"] = _calculate_improvement_metrics(
+            row["zoo"], row["transformer"]
+        )
         row["n_plays"] = split_df.select(pl.struct(["gameId", "playId"]).n_unique()).item()
         row["n_frames"] = split_df.select(pl.len()).item()
 
@@ -152,19 +182,11 @@ def calculate_results(results_df: pl.DataFrame) -> list[dict]:
 
         for model_type in ["zoo", "transformer"]:
             model_df = event_df.filter(pl.col("model_type") == model_type)
+            row[model_type] = _calculate_ade_for_df(model_df)
 
-            ade = model_df.select(
-                pl.map_groups(
-                    exprs=["tackle_x", "tackle_y", "tackle_x_pred", "tackle_y_pred"],
-                    function=lambda ls: calculate_ade(*ls),
-                    returns_scalar=True,
-                )
-            ).item()
-
-            row[model_type] = round(ade, 2)
-
-        row["improvement_pct"] = round((row["zoo"] - row["transformer"]) / row["zoo"] * 100, 1)
-        row["improvement_yards"] = round(row["zoo"] - row["transformer"], 2)
+        row["improvement_pct"], row["improvement_yards"] = _calculate_improvement_metrics(
+            row["zoo"], row["transformer"]
+        )
         row["n_plays"] = n_plays
         row["n_frames"] = event_df.select(pl.len()).item()
         row["_avg_frameId"] = round(event_df["frameId"].mean(), 1)  # For sorting only
@@ -210,9 +232,9 @@ def calculate_frame_difference_results(results_df: pl.DataFrame) -> tuple[list[d
             n_plays=pl.struct(["gameId", "playId"]).n_unique(),
             ade_yards=pl.map_groups(
                 exprs=["tackle_x", "tackle_y", "tackle_x_pred", "tackle_y_pred"],
-                function=lambda ls: calculate_ade(*ls),
+                function=lambda ls: round(calculate_ade(*ls), 2),
                 returns_scalar=True,
-            ).round(2),
+            ),
         )
         .sort("frame_difference_from_tackle_cat")
     )
@@ -232,8 +254,9 @@ def calculate_frame_difference_results(results_df: pl.DataFrame) -> tuple[list[d
                 row[model_type] = model_data["ade_yards"].item()
 
         if "zoo" in row and "transformer" in row:
-            row["improvement_pct"] = round((row["zoo"] - row["transformer"]) / row["zoo"] * 100, 1)
-            row["improvement_yards"] = round(row["zoo"] - row["transformer"], 2)
+            row["improvement_pct"], row["improvement_yards"] = _calculate_improvement_metrics(
+                row["zoo"], row["transformer"]
+            )
 
         # Get n_plays and n_frames (should be same for both models)
         first_row = cat_df.row(0, named=True)

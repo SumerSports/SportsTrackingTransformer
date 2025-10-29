@@ -274,22 +274,16 @@ def main(args):
     and trains models for each combination. It supports both exhaustive grid search
     and random search based on the provided arguments.
     """
-    # Define hyperparameter search space
-    # We test different model sizes to find the optimal balance between:
-    # - Too small: Can't learn complex spatial patterns
-    # - Too large: Overfits (memorizes training plays, fails on new situations)
+    # Hyperparameter search space:
+    # - lrs: Learning rate (1e-4 based on prior experimentation)
+    # - model_dims: Model width (32, 128, 512) - # size of internal vector representation for each player in each layer
+    # - num_layers: Model depth (1, 2, 4, 8) - number of stacked layers
+    #
+    # Total: 12 configurations per architecture × 2 architectures = 24 models
 
-    lrs = [1e-4]  # Learning rate: controls how fast the model learns
-    # - Too high: training becomes unstable, overshoots optimal weights
-    # - Too low: takes forever to converge, may get stuck in local minima
-    # We use 1e-4 (0.0001) based on prior experimentation
-
-    model_dims = [32, 128, 512]  # Model width: size of vector representation for each player
-
-    num_layers = [1, 2, 4, 8]  # Model depth: number of stacked layers
-
-    # Total configurations: 1 lr × 3 model_dims × 4 num_layers = 12 per architecture
-    # Training both Zoo and Transformer = 24 total models
+    lrs = [1e-4]
+    model_dims = [32, 128, 512]
+    num_layers = [1, 2, 4, 8]
 
     # Create gridsearch iterable
     gridsearch = list(product(model_dims, num_layers, lrs))
