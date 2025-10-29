@@ -258,7 +258,7 @@ def train_model(
     # Generate and save predictions for the best model
     best_ckpt_path = Path(trainer.checkpoint_callback.best_model_path)
     preds_df = predict_model_as_df(lit_model, best_ckpt_path, devices[:1])
-    preds_df.write_parquet(best_ckpt_path.with_suffix(".results.parquet"))
+    preds_df.write_parquet(best_ckpt_path.with_suffix(".results.parquet"), compression="zstd", compression_level=22)
 
     return lit_model
 

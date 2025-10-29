@@ -9,7 +9,9 @@ import json
 import re
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import polars as pl
+import seaborn as sns
 import torch
 from fvcore.nn import FlopCountAnalysis
 
@@ -27,12 +29,26 @@ TRANSFORMER_CHECKPOINT = MODELS_DIR / "transformer" / "best_model.ckpt"
 
 
 def load_results() -> pl.DataFrame:
-    """Load and combine results from both models."""
+    """Load and combine results from both models, including per-frame events from tracking data."""
     print("Loading model results...")
     results_df = pl.concat(
         [pl.read_parquet(ZOO_RESULTS), pl.read_parquet(TRANSFORMER_RESULTS)],
         how="diagonal",
     )
+
+    # Load tracking data to get per-frame events
+    print("Loading tracking data for per-frame events...")
+    tracking_df = pl.read_parquet("data/split_prepped_data/*_features.parquet")
+
+    # Join with tracking data to get per-frame events
+    results_df = results_df.join(
+        tracking_df.filter(pl.col("is_ball_carrier") == 1)
+        .select(["x", "y", "gameId", "playId", "frameId", "mirrored", "event"])
+        .rename({"x": "ball_carrier_x", "y": "ball_carrier_y"}),
+        on=["gameId", "playId", "frameId", "mirrored"],
+        how="inner",
+    )
+
     # Filter to mirrored=False to avoid double-counting predictions
     # (mirrored data is just augmentation - same play, flipped horizontally)
     results_df = results_df.filter(pl.col("mirrored") == False)
@@ -72,19 +88,22 @@ def calculate_results(results_df: pl.DataFrame) -> list[dict]:
 
         results.append(row)
 
-    # Test event breakdowns
-    print("Calculating test set event breakdowns...")
+    # Test event breakdowns (using per-frame events)
+    print("Calculating test set event breakdowns (per-frame events)...")
     test_df = results_df.filter(pl.col("dataset_split") == "test")
-    events = sorted(test_df["tackle_event"].unique().drop_nulls().to_list())
+    events = sorted(test_df.filter(pl.col("event").is_not_null())["event"].unique().to_list())
 
     event_results = []
     for event in events:
-        # Filter to only the specific frame where the event occurred
-        event_df = test_df.filter(
-            (pl.col("tackle_event") == event) & (pl.col("frameId") == pl.col("tackle_frameId"))
-        )
+        # Use per-frame events (all frames with this event)
+        event_df = test_df.filter(pl.col("event") == event)
 
-        row = {"split": f"test-{event}", "metric": "ade_yards"}
+        # Skip events with too few plays
+        n_plays = event_df.select(pl.struct(["gameId", "playId"]).n_unique()).item()
+        if n_plays < 100:
+            continue
+
+        row = {"split": f"test-event-{event}", "metric": "ade_yards"}
 
         for model_type in ["zoo", "transformer"]:
             model_df = event_df.filter(pl.col("model_type") == model_type)
@@ -101,16 +120,120 @@ def calculate_results(results_df: pl.DataFrame) -> list[dict]:
 
         row["improvement_pct"] = round((row["zoo"] - row["transformer"]) / row["zoo"] * 100, 1)
         row["improvement_yards"] = round(row["zoo"] - row["transformer"], 2)
-        row["n_plays"] = event_df.select(pl.struct(["gameId", "playId"]).n_unique()).item()
+        row["n_plays"] = n_plays
         row["n_frames"] = event_df.select(pl.len()).item()
+        row["_avg_frameId"] = round(event_df["frameId"].mean(), 1)  # For sorting only
 
         event_results.append(row)
 
-    # Sort event results by n_plays descending
-    event_results.sort(key=lambda x: x["n_plays"], reverse=True)
+    # Sort event results by avg_frameId, then remove the sorting key
+    event_results.sort(key=lambda x: x["_avg_frameId"])
+    for row in event_results:
+        del row["_avg_frameId"]
     results.extend(event_results)
 
     return results
+
+
+def calculate_frame_difference_results(results_df: pl.DataFrame) -> tuple[list[dict], pl.DataFrame]:
+    """
+    Calculate results by frame difference from tackle (test set only).
+
+    Returns:
+        tuple: (list of result dicts, DataFrame for plotting)
+    """
+    print("\nCalculating frame-difference breakdown (test set only)...")
+
+    frame_diff_df = (
+        results_df.with_columns(
+            frame_difference_from_tackle=(pl.col("tackle_frameId") - pl.col("frameId")),
+        )
+        .with_columns(
+            frame_difference_from_tackle_cat=(
+                pl.col("frame_difference_from_tackle").cut(
+                    breaks=range(0, 31, 5),
+                    labels=["after tackle", "0-5", "5-10", "10-15", "15-20", "20-25", "25-30", "30+"],
+                    left_closed=True,
+                )
+            )
+        )
+        .filter(pl.col("dataset_split") == "test")
+        .group_by(["model_type", "frame_difference_from_tackle_cat"])
+        .agg(
+            order=pl.col("frame_difference_from_tackle").mean() * -1,
+            n_frames=pl.len(),
+            n_plays=pl.struct(["gameId", "playId"]).n_unique(),
+            ade_yards=pl.map_groups(
+                exprs=["tackle_x", "tackle_y", "tackle_x_pred", "tackle_y_pred"],
+                function=lambda ls: calculate_ade(*ls),
+                returns_scalar=True,
+            ).round(2),
+        )
+        .sort("frame_difference_from_tackle_cat")
+    )
+
+    # Convert to results format for JSON
+    results = []
+    categories = sorted(frame_diff_df["frame_difference_from_tackle_cat"].unique().to_list())
+
+    for category in categories:
+        cat_df = frame_diff_df.filter(pl.col("frame_difference_from_tackle_cat") == category)
+
+        row = {"split": f"test-frames-before-tackle-{category}", "metric": "ade_yards"}
+
+        for model_type in ["zoo", "transformer"]:
+            model_data = cat_df.filter(pl.col("model_type") == model_type)
+            if len(model_data) > 0:
+                row[model_type] = model_data["ade_yards"].item()
+
+        if "zoo" in row and "transformer" in row:
+            row["improvement_pct"] = round((row["zoo"] - row["transformer"]) / row["zoo"] * 100, 1)
+            row["improvement_yards"] = round(row["zoo"] - row["transformer"], 2)
+
+        # Get n_plays and n_frames (should be same for both models)
+        first_row = cat_df.row(0, named=True)
+        row["n_plays"] = int(first_row["n_plays"])
+        row["n_frames"] = int(first_row["n_frames"])
+
+        results.append(row)
+
+    return results, frame_diff_df
+
+
+def generate_frame_difference_plot(frame_diff_df: pl.DataFrame) -> None:
+    """Generate and save frame-difference plot."""
+    print("\nGenerating frame-difference plot...")
+
+    # Convert to pandas for plotting
+    frame_diff_df_pandas = frame_diff_df.to_pandas()
+
+    # Create the line plot
+    plt.figure(figsize=(12, 6))
+    sns.lineplot(
+        data=frame_diff_df_pandas,
+        x="frame_difference_from_tackle_cat",
+        y="ade_yards",
+        hue="model_type",
+        marker="o",
+    )
+
+    # Flip the x-axis
+    plt.gca().invert_xaxis()
+
+    # Customize the plot
+    plt.title("Model Performance by Frames Before Tackle", fontsize=16)
+    plt.xlabel("Frames Before Tackle", fontsize=12)
+    plt.ylabel("Average Displacement Error (yards)", fontsize=12)
+    plt.xticks(rotation=45, ha="right")
+    plt.legend(title="Model Type", title_fontsize="12", fontsize="10")
+
+    # Adjust layout and save
+    plt.tight_layout()
+    plot_path = RESULTS_DIR / "frame_difference_plot.png"
+    plt.savefig(plot_path, dpi=300, bbox_inches="tight")
+    plt.close()
+
+    print(f"  Saved: {plot_path}")
 
 
 def find_all_model_checkpoints() -> list[dict]:
@@ -292,11 +415,18 @@ def main():
     results_df = load_results()
     results = calculate_results(results_df)
 
-    # Save results JSON
-    json_path = RESULTS_DIR / "results.json"
-    with open(json_path, "w") as f:
-        json.dump(results, f, indent=2)
-    print(f"\n✓ Saved: {json_path}")
+    # Add frame-difference results (test only)
+    frame_diff_results, frame_diff_df = calculate_frame_difference_results(results_df)
+    results.extend(frame_diff_results)
+
+    # Generate frame-difference plot
+    generate_frame_difference_plot(frame_diff_df)
+
+    # Save results CSV
+    results_csv_path = RESULTS_DIR / "results.csv"
+    results_pl_df = pl.DataFrame(results)
+    results_pl_df.write_csv(results_csv_path)
+    print(f"\n✓ Saved: {results_csv_path}")
 
     # Compute and save comprehensive model comparison
     model_comparison = compute_model_comparison()
@@ -318,9 +448,15 @@ def main():
 
     print(f"\nTest Set Events:")
     for row in results:
-        if row["split"].startswith("test-"):
-            event_name = row["split"].replace("test-", "")
-            print(f"  {event_name:15s}: {row['improvement_pct']:5.1f}% improvement")
+        if row["split"].startswith("test-event-"):
+            event_name = row["split"].replace("test-event-", "")
+            print(f"  {event_name:20s}: {row['improvement_pct']:5.1f}% improvement")
+
+    print(f"\nTest Set Frame Differences:")
+    for row in results:
+        if row["split"].startswith("test-frames-before-tackle-"):
+            frame_cat = row["split"].replace("test-frames-before-tackle-", "")
+            print(f"  {frame_cat:15s}: {row['improvement_pct']:5.1f}% improvement")
 
 
 if __name__ == "__main__":

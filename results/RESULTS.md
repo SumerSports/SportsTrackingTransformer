@@ -4,7 +4,7 @@
 ```bash
 uv run python src/generate_results_summary.py
 ```
-This generates `results.json` (performance metrics) and `model_comparison.json` (all trained models).
+This generates `results.csv` (performance metrics), `model_comparison.json` (all trained models), and `frame_difference_plot.png` (visualization).
 
 ---
 
@@ -114,50 +114,80 @@ Comparing the selected best models (Zoo M128_L2 vs Transformer M512_L2), the Tra
 
 ---
 
-## Test Set Performance by Event Type
+## Test Set Performance by Event Type (Per-Frame)
 
-The Transformer shows particularly strong improvements on specific tackle events, especially when predicting the exact tackle frame:
+This analysis shows model performance at **different moments during each play** (e.g., when the ball is snapped, when the handoff occurs, when first contact happens). Events are shown in chronological order as they occur during a typical play. The Transformer shows progressively stronger improvements as the play unfolds toward the tackle:
 
 | Event | Zoo (yards) | Transformer (yards) | Improvement | Plays |
 |-------|-------------|---------------------|-------------|-------|
-| **Tackle** | 4.03 | 1.02 | **74.7%** (3.01 yards) | 1,497 |
+| **Ball Snap** | 8.64 | 8.90 | **-3.0%** (-0.26 yards) | 958 |
+| **Handoff** | 6.63 | 6.51 | **1.8%** (0.12 yards) | 887 |
+| **Run** | 7.69 | 7.01 | **8.8%** (0.68 yards) | 142 |
+| **Pass Arrived** | 4.95 | 4.64 | **6.3%** (0.31 yards) | 732 |
+| **Pass Outcome Caught** | 4.46 | 4.17 | **6.5%** (0.29 yards) | 842 |
+| **First Contact** | 3.96 | 2.90 | **26.8%** (1.06 yards) | 1,578 |
 | **Out of Bounds** | 5.37 | 1.68 | **68.7%** (3.69 yards) | 272 |
-| **Touchdown** | 4.99 | 2.29 | **54.1%** (2.70 yards) | 67 |
-| **QB Slide** | 5.00 | 2.63 | **47.4%** (2.37 yards) | 21 |
-| **Fumble** | 5.14 | 3.03 | **41.1%** (2.11 yards) | 14 |
+| **Tackle** | 4.03 | 1.02 | **74.7%** (3.01 yards) | 1,497 |
 
-The Transformer's self-attention mechanism is particularly effective at capturing the complex spatial relationships between all players simultaneously, leading to more accurate tackle location predictions.
+**Key Insight:** The Transformer excels at refining predictions as plays develop. Early in the play (ball snap, handoff), both models struggle to predict the final tackle location. But as the play unfolds and contact approaches, the Transformer's self-attention mechanism captures complex spatial relationships between all players, leading to dramatically more accurate predictions at critical moments (first contact: 26.8% improvement, tackle: 74.7% improvement).
+
+---
+
+## Performance by Frames Before Tackle
+
+![Frame Difference Plot](frame_difference_plot.png)
+
+This visualization shows how model performance changes as predictions are made closer to the tackle moment. The x-axis represents frames before tackle (right to left = approaching tackle), and the y-axis shows Average Displacement Error in yards.
+
+### Key Observations
+
+**Transformer generalizes dramatically better near the tackle:**
+
+| Frames Before Tackle | Zoo (yards) | Transformer (yards) | Improvement |
+|---------------------|-------------|---------------------|-------------|
+| **After tackle** | 4.51 | 1.18 | **73.8%** (3.33 yards) |
+| **0-5 frames** | 4.12 | 1.26 | **69.4%** (2.86 yards) |
+| **5-10 frames** | 3.71 | 1.57 | **57.7%** (2.14 yards) |
+| **10-15 frames** | 3.54 | 2.22 | **37.3%** (1.32 yards) |
+| **15-20 frames** | 3.82 | 3.13 | **18.1%** (0.69 yards) |
+| **20-25 frames** | 4.44 | 4.11 | **7.4%** (0.33 yards) |
+| **25-30 frames** | 5.23 | 5.04 | **3.6%** (0.19 yards) |
+| **30+ frames** | 9.46 | 9.48 | **-0.2%** (-0.02 yards) |
+
+**What this reveals:**
+
+1. **Far from tackle (30+ frames)**: Both models perform similarly poorly (~9.5 yards error). At this point, the play is just beginning and the final tackle location is highly uncertain.
+
+2. **Approaching tackle (25-10 frames)**: The Transformer begins to show advantages (3.6% → 37.3% improvement) as more spatial information becomes available.
+
+3. **Near tackle (0-10 frames)**: The Transformer excels (57.7% → 69.4% improvement). Its self-attention mechanism effectively captures the converging defensive players and ball carrier trajectory.
+
+4. **After tackle**: The Transformer maintains 73.8% improvement, demonstrating its superior ability to retroactively predict tackle locations even after the play has ended.
+
+The plot clearly shows the Transformer's **architectural advantage scales with information availability** - as the spatial configuration of players becomes more informative about the tackle location, the Transformer's ability to model all player interactions simultaneously leads to dramatically better predictions.
 
 ---
 
 ## Data Files
 
-### results.json
+### results.csv
 
 Performance metrics for selected models across all data splits.
 
 **Format:**
-```json
-[
-  {
-    "split": "train|val|test|test-{event}",
-    "metric": "ade_yards",
-    "zoo": ...,
-    "transformer": ...,
-    "improvement_pct": ...,
-    "improvement_yards": ...,
-    "n_plays": ...,
-    "n_frames": ...
-  }
-]
+```csv
+split,metric,zoo,transformer,improvement_pct,improvement_yards,n_plays,n_frames
+train,ade_yards,...
+test-event-{event},ade_yards,...
+test-frames-before-tackle-{range},ade_yards,...
 ```
 
 **Notes:**
 - Only `mirrored=False` data is used (mirrored data is horizontal flip augmentation - filtered to avoid double-counting)
 - `n_frames` = total number of predictions evaluated (includes both models)
 - For main splits (train/val/test): `n_frames` includes all frames across all plays
-- For event splits (test-tackle, test-fumble, etc.): only the specific frame where the event occurred is evaluated, so `n_frames = 2 × n_plays`
-- Event splits are sorted by `n_plays` (descending)
+- For event splits (test-event-ball_snap, test-event-handoff, test-event-tackle, etc.): evaluates predictions at the specific frame when the event occurred during the play (e.g., "test-event-handoff" evaluates tackle predictions at the moment of handoff), so `n_frames ≈ 2 × n_plays`
+- Event splits are filtered to include only events with >100 plays
 
 ### model_comparison.json
 

@@ -5,8 +5,8 @@
     "num_layers": 1,
     "params": 14358,
     "inference_flops": 286720,
-    "test_ade_yards": 5.14,
-    "val_loss": 2.885
+    "test_ade_yards": 5.13,
+    "val_loss": 2.872
   },
   {
     "model_type": "transformer",
@@ -32,8 +32,8 @@
     "num_layers": 8,
     "params": 103286,
     "inference_flops": 2228352,
-    "test_ade_yards": 4.9,
-    "val_loss": 2.701
+    "test_ade_yards": 4.87,
+    "val_loss": 2.698
   },
   {
     "model_type": "transformer",
@@ -140,8 +140,8 @@
     "num_layers": 8,
     "params": 24862,
     "inference_flops": 1058704,
-    "test_ade_yards": 6.7,
-    "val_loss": 3.903
+    "test_ade_yards": 6.4,
+    "val_loss": 3.666
   },
   {
     "model_type": "zoo",
@@ -186,7 +186,7 @@
     "params": 599190,
     "inference_flops": 32644120,
     "test_ade_yards": 5.72,
-    "val_loss": 3.229
+    "val_loss": 3.226
   },
   {
     "model_type": "zoo",
