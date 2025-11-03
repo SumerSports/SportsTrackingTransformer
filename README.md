@@ -9,7 +9,7 @@ This paper introduces a transformative approach to sports analytics by applying 
 
 The repository contains our implementation and experimental results, providing a foundation for future research in sports analytics using Transformer-based architectures. We believe this approach can be extended beyond American football to other team sports, offering a more robust and generalizable framework for analyzing player tracking data.
 
-![Simple Architecture Diagram](./Sumer%20Sports%20Transformer%20Simple%20Arch.jpg)
+![Simple Architecture Diagram](./paper/Sumer%20Sports%20Transformer%20Simple%20Arch.jpg)
 
 Our key contributions include:
 
@@ -23,8 +23,9 @@ We hope this work catalyzes a shift in sports analytics research methodologies, 
 ## Paper and Workshop Materials
 
 This repository accompanies our research paper:
-- **Full Paper**: [`Attention is All You Need, for Sports Tracking Data.pdf`](./Attention%20is%20All%20You%20Need,%20for%20Sports%20Tracking%20Data.pdf)
-- **Workshop Slides**: [`CMSAC Workshop Notes.pdf`](./CMSAC%20Workshop%20Notes.pdf) - Presented at the Carnegie Mellon Sports Analytics Conference
+- **Full Paper**: [`Attention is All You Need, for Sports Tracking Data.pdf`](./paper/Attention%20is%20All%20You%20Need,%20for%20Sports%20Tracking%20Data.pdf)
+- **LaTeX Source**: [`Attention is All You Need, for Sports Tracking Data.tex`](./paper/Attention%20is%20All%20You%20Need,%20for%20Sports%20Tracking%20Data.tex)
+- **Workshop Slides**: [`CMSAC Workshop Notes.pdf`](./paper/CMSAC%20Workshop%20Notes.pdf) - Presented at the Carnegie Mellon Sports Analytics Conference
 
 ## Getting Started
 
