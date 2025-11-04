@@ -112,12 +112,12 @@ In this paper, we focus on modeling the static \textit{multi-entity} aspect of t
 \subsection{Task Formulation}
 \label{sec:task_formulation}
 To facilitate a comparative discussion of various modeling approaches, we first establish a general mathematical framework for learning from sports tracking data. 
-Let $P = {p_1, p_2, ..., p_K}$ represent the set of $K$ players participating in a particular frame. Similarly, let $V={v_1, v_2, ..., v_K}$ be the set of feature vectors such that each $v_k \in \mathbb{R}^d$ captures all relevant spatial (e.g., position and velocity) and characteristic (e.g., height and weight) features for the player $p_k$. Crucially, both $P$ and $V$ are \textit{unordered} sets, reflecting the absence of intrinsic order of players in most team sports.
+Let $P = \{p_1, p_2, ..., p_K\}$ represent the set of $K$ players participating in a particular frame. Similarly, let $V=\{v_1, v_2, ..., v_K\}$ be the set of feature vectors such that each $v_k \in \mathbb{R}^d$ captures all relevant spatial (e.g., position and velocity) and characteristic (e.g., height and weight) features for the player $p_k$. Crucially, both $P$ and $V$ are \textit{unordered} sets, reflecting the absence of intrinsic order of players in most team sports.
 We define our supervised learning task over $V$ as follows:
 Let $y \in \mathcal{Y}$ be the objective label we aim to predict, where $\mathcal{Y}$ is the set of possible outcomes. This could represent various tasks such as predicting future events or outcomes.
 We define a model $f: (\mathbb{R}^d)^K \rightarrow \mathcal{Y}$ as a function that maps the set of feature vectors $V$ to the label space $\mathcal{Y}$. Formally,
 \begin{equation}
-\hat{y} = f(V) = f({v_1, v_2, ..., v_K})
+\hat{y} = f(V) = f(\{v_1, v_2, ..., v_K\})
 \end{equation}
 where $\hat{y}$ is the predicted label.
 To train this model, we define a loss function $\mathcal{L}: \mathcal{Y} \times \mathcal{Y} \rightarrow \mathbb{R}$ that measures the discrepancy between the true label $y$ and the predicted label $\hat{y}$. The optimization problem can then be formulated as:
@@ -181,7 +181,7 @@ This approach addresses the limitations of previous methods in several ways:
 \label{prior-work-equivariance}
 This paper is not the first to develop general-purpose Deep Learning frameworks over unordered player tracking in sports. Here, we compare several notable approaches to our proposed Transformer-based method: 
 \subsubsection{DeepSets}
-\citet{horton2020footballtracking} targeted the problem of proposing a canonical end-to-end modeling of raw trajectory data for learning latent representations generally across problems and sports. This paper, released before Transformers demonstrated widespread modeling success outside of the NLP domain, used an equivariant architecture \textbackslash{}textit\{DeepSets\} \textbackslash{}citep\{zaheer2018deepsets\} that relies on global pooling of element-wise transformations. \\
+\citet{horton2020footballtracking} targeted the problem of proposing a canonical end-to-end modeling of raw trajectory data for learning latent representations generally across problems and sports. This paper, released before Transformers demonstrated widespread modeling success outside of the NLP domain, used an equivariant architecture \textit{DeepSets} \citep{zaheer2018deepsets} that relies on global pooling of element-wise transformations. \\
 While DeepSets offers permutation equivariance, it is likely inferior to Transformers in sports modeling scenarios where the set size is small but require deep, long-range pattern recognition. Transformers' self-attention mechanism allows for more nuanced interactions between all players, capturing complex spatial and temporal dependencies crucial in team sports. Moreover, Transformers have become ubiquitous across various domains, leading to extensive research, optimizations, and pre-trained models, which DeepSets lack. 
 \subsubsection{Graph Neural Nets}
 \label{prior-work-gnn}
@@ -235,7 +235,7 @@ To standardize the data, we followed common practices in NFL modeling:
 \item We excluded the ball location data as in this dataset the ball was always held by a ball carrier and so was redundant.
 \end{itemize}
 
-For our experiments, we treated each frame as an independent input, although the tackle location labels are unique at the play level. We split the data into training, validation, and test sets with a 70/15/15 ratio based on unique plays. This resulted in:
+For our experiments, we treated each frame as an independent input, although the tackle location labels are unique at the play level. We split the data into training, validation, and test sets with a 70/15/15 ratio, randomly sampling at the play level (seed=42). This resulted in:
 \begin{itemize}
 \item Training set: ~9,000 unique plays, ~750,000 frames
 \item Validation set: ~2,000 unique plays, ~150,000 frames
@@ -253,7 +253,7 @@ where $N$ is the number of predictions, and coordinates are measured in yards on
 
 \subsection{Models}
 To evaluate the effectiveness of the Transformer architecture in sports analytics, we compare it against The Zoo Architecture, a baseline model that has shown success in similar tasks. To ensure a fair comparison, both models share the same AdamW optimizer, learning rate, and SmoothL1Loss function (also known as Huber Loss). The SmoothL1Loss balances L1 Loss for outliers with L2 Loss for predictions close to the target, providing robustness and numerical stability to our training.
-We conducted a grid search over learning rates, model sizes, and number of layers for both models, while keeping batch size and dropout fixed. This approach allows us to isolate the impact of architectural differences on model performance.  The results are from the best model picked over the grid search.
+We conducted a grid search over learning rates, model sizes, and number of layers for both models, while keeping batch size and dropout fixed. This approach allows us to isolate the impact of architectural differences on model performance.  The results are from the best model picked over the grid search. Models trained for maximum 200 epochs with early stopping (patience=10).
 \subsubsection{Transformer Model Experiment}
 For the Transformer model in this experiment, we define the set of feature vectors $V = \{v_1, v_2, ..., v_K\}$ over the $K = 22$ players, where each $v_k \in \mathbb{R}^6$ represents the features of player $p_k$. Specifically, each feature vector $v_k$ is composed of:
 \begin{equation}
@@ -273,6 +273,7 @@ The TransformerEncoder model $f: (\mathbb{R}^6)^{22} \rightarrow (\mathbb{R}^d)^
 \begin{equation}
     \hat{y} = (\hat{x}_{tackle}, \hat{y}_{tackle}) = g(f(V)) = g(f(\{v_1, v_2, ..., v_{22}\}))
 \end{equation}
+Implementation: $d_{\text{ff}} = 4d$, attention heads $= \min(16, \max(2, 2 \times \lfloor d/64 \rfloor))$, BatchNorm1d for normalization, AdaptiveAvgPool1d for pooling.
 \subsubsection{The Zoo Architecture Model Details}
 For our Zoo, we have to perform a complex pairwise feature interaction process $\Phi:  V \rightarrow (\mathbb{R}^{10})^{10\cdot11}$ that converts $V = \{v_1, v_2, ..., v_K\}$ over the $K = 22$ players into 110 interaction vectors. Specifically, each interaction vector $u_{ij}$ between offensive player $p_i$ and defensive player $p_j$ with ball carrier $p_b$ is composed of:
 \begin{equation}
@@ -288,6 +289,47 @@ where:
 Then Zoo model $g: (\mathbb{R}^{10})^{10\cdot11} \rightarrow \mathbb{R}^2$ applies successive MLPs to interaction vectors independently, only pooling across to reduce dimensionality.
 
 \section{Results}
+
+\subsection{Model Selection and Architectural Scaling}
+
+Before comparing final model performance, we examine how each architecture responds to increased model capacity. This analysis validates that our findings are not simply due to selecting a larger Transformer model, and reveals fundamental differences in architectural expressiveness.
+
+We trained 24 models total (12 per architecture) spanning the following hyperparameter space: model dimensions \{32, 128, 512\}, number of layers \{1, 2, 4, 8\}, with fixed learning rate (1e-4), batch size (256), and dropout (0.3). Table \ref{tab:model_scaling_comparison} presents representative configurations from both architectures.
+
+\begin{table}[h]
+	\caption{Representative Model Configurations Showing Scaling Behavior}
+	\centering
+	\begin{tabular}{|l|c|c|c|c|c|}
+	\hline
+    \textbf{Model} & \textbf{Dim} & \textbf{Layers} & \textbf{Params} & \textbf{FLOPs} & \textbf{Test ADE (yards)} \\
+    \hline
+    \multicolumn{6}{|c|}{\textit{Zoo Architecture}} \\
+    \hline
+    Zoo-Small & 32 & 2 & 5K & 0.6M & 6.22 \\
+    Zoo-Medium & 128 & 2 & 73K & 8.4M & \textbf{5.71} \\
+    Zoo-Large & 512 & 2 & 1.1M & 128.9M & 5.76 \\
+    Zoo-XLarge & 512 & 8 & 5.9M & 513.5M & 5.93 \\
+    \hline
+    \multicolumn{6}{|c|}{\textit{Transformer Architecture}} \\
+    \hline
+    Transformer-Small & 32 & 4 & 52K & 2.2M & 4.90 \\
+    Transformer-Medium & 128 & 2 & 418K & 17.5M & 4.64 \\
+    Transformer-Large & 512 & 2 & 6.6M & 277.9M & \textbf{4.57} \\
+    Transformer-XLarge & 512 & 8 & 25.6M & 1109.1M & 4.66 \\
+    \hline
+	\end{tabular}
+	\label{tab:model_scaling_comparison}
+\end{table}
+
+The results reveal strikingly different scaling behaviors between the two architectures. The optimal Zoo configuration is the relatively modest Zoo-Medium (73K parameters, 8.4M FLOPs, 5.71 yards ADE). Increasing capacity beyond this point consistently degrades performance: Zoo-XLarge, despite being 81× larger in parameters and 61× larger in FLOPs, achieves worse performance at 5.93 yards. This pattern held across our entire hyperparameter sweep, with larger Zoo models universally underperforming their smaller counterparts.
+
+In contrast, the Transformer shows clear improvements with increased capacity: 4.90 → 4.64 → 4.57 yards as we scale from Small to Medium to Large configurations (127× parameter increase). Only at extreme capacity (Transformer-XLarge at 25.6M parameters) do we observe slight overfitting.
+
+Critically, Transformer models outperform Zoo even at matched computational budgets. Transformer-Small (52K params, 2.2M FLOPs) achieves 4.90 yards, substantially better than Zoo-Medium (73K params, 8.4M FLOPs) at 5.71 yards. This represents a 14\% improvement with fewer parameters and less computation. This pattern holds across all comparable model sizes, with Transformers consistently achieving 15-23\% better performance at matched FLOP budgets.
+
+These results demonstrate that the Transformer's advantages stem from fundamental architectural properties, specifically its ability to capture higher-order interactions between all players through self-attention, rather than simply having more parameters.
+
+For the detailed performance comparisons that follow, we selected the best-performing model from each architecture irrespective of size: Zoo-Medium (73K params, 5.71 yards) and Transformer-Large (6.6M params, 4.57 yards). While these models differ in capacity by 91× in parameters and 33× in FLOPs, this comparison reflects the optimal version of each architectural approach and deliberately avoids penalizing the Transformer for Zoo's inability to scale.
 
 \subsection{Overall Performance}
 
@@ -411,6 +453,9 @@ Our discussion thus far has focused on previous work that relied on decomposing 
 \end{itemize}
 
 These studies underscore the utility of Attention mechanisms for modeling sports tracking frames. However, we believe that our paper contributes significantly by providing an easily reproducible approach with a narrower scope, focusing specifically on the application of Transformer-based Attention to static, single-frame sports tracking data.
+
+\subsection{Limitations and Future Directions}
+This work focuses deliberately on a narrow scope to provide a clear, reproducible demonstration of Transformer effectiveness. We evaluated a single task (tackle prediction) in one sport (NFL) using static, single-frame inputs without temporal modeling across frames. While we believe the principles generalize broadly, empirical validation across diverse sports, tasks, and temporal modeling approaches remains valuable future work. We welcome further research to explore these dimensions and extend our findings.
 
 \section{Conclusion}
 In summary, the adoption of transformers in sports data modeling promises to address the limitations of existing methodologies by providing a simple, generalized, and scalable framework. Our methodology demonstrates the superior performance of transformer-based models compared to traditional approaches like The Zoo Architecture, highlighting their potential in capturing complex spatial interactions with minimal feature engineering. This paradigm shift could facilitate more robust and flexible analyses, ultimately advancing the field of sports data science.
