@@ -14,7 +14,7 @@ import numpy as np
 import polars as pl
 import seaborn as sns
 import torch
-from fvcore.nn import FlopCountAnalysis
+from calflops import calculate_flops
 
 from models import LitModel
 
@@ -388,19 +388,27 @@ def compute_model_metrics(checkpoint_path: str, model_type: str) -> dict:
     model = lit_model.model
     model.eval()
 
-    # Create dummy input
+    # Create dummy input shape
     if model_type == "transformer":
-        dummy_input = torch.randn(1, 22, 6)
+        input_shape = (1, 22, 6)
     else:  # zoo
-        dummy_input = torch.randn(1, 10, 11, 10)
+        input_shape = (1, 10, 11, 10)
 
     # Calculate params
     params = int(lit_model.hparams["params"])
 
-    # Calculate FLOPs
+    # Calculate FLOPs using calflops
+    # Note: We use calflops instead of fvcore because it properly counts
+    # transformer attention operations (scaled_dot_product_attention),
+    # which are critical for accurate FLOP comparison between models.
     try:
-        flops_analysis = FlopCountAnalysis(model, dummy_input)
-        inference_flops = int(flops_analysis.total())
+        flops, macs, _ = calculate_flops(
+            model=model,
+            input_shape=input_shape,
+            print_results=False,
+            output_as_string=False,
+        )
+        inference_flops = int(flops)
     except Exception:
         inference_flops = None
 

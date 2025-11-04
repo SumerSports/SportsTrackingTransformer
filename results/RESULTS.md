@@ -26,9 +26,9 @@ Our goal was to compare Transformer and Zoo architectures at **similar model siz
 
 ### What We Found
 
-**Zoo architecture does not scale well.** The best Zoo model is the relatively small **M128_L2** (72K params, 4.2M FLOPs, 5.71 yards ADE). Larger Zoo models consistently performed worse - for example, scaling up to M512_L8 (5.9M params, 256M FLOPs) resulted in **5.93 yards ADE**, actually degrading performance despite being 81× larger.
+**Zoo architecture does not scale well.** The best Zoo model is the relatively small **M128_L2** (72K params, 8.4M FLOPs, 5.71 yards ADE). Larger Zoo models consistently performed worse - for example, scaling up to M512_L8 (5.9M params, 514M FLOPs) resulted in **5.93 yards ADE**, actually degrading performance despite being 81× larger.
 
-**Transformer architecture scales effectively.** The best Transformer model is **M512_L2** (6.6M params, 139M FLOPs, 4.57 yards ADE), showing clear improvements with increased model capacity.
+**Transformer architecture scales effectively.** The best Transformer model is **M512_L2** (6.6M params, 278M FLOPs, 4.57 yards ADE), showing clear improvements with increased model capacity.
 
 ### Fair Comparison
 
@@ -38,7 +38,7 @@ Given Zoo's inability to scale, we selected:
 
 While these models differ in size (Transformer is 91× larger in parameters, 33× larger in FLOPs), this comparison uses the **optimal version of each architecture**.
 
-**Importantly:** Even if we were **forced to pick a smaller Transformer** than the best Zoo model, the **Transformer M32_L4** (52K params, 1.1M FLOPs, **4.90 yards ADE**) still **handily outperforms** the best Zoo M128_L2 (72K params, 4.2M FLOPs, **5.71 yards ADE**) - an improvement of **0.81 yards (14%)** with fewer parameters and 4× fewer FLOPs.
+**Importantly:** Even if we were **forced to pick a smaller Transformer** than the best Zoo model, the **Transformer M32_L4** (52K params, 2.2M FLOPs, **4.90 yards ADE**) still **handily outperforms** the best Zoo M128_L2 (72K params, 8.4M FLOPs, **5.71 yards ADE**) - an improvement of **0.81 yards (14%)** with fewer parameters and 4× fewer FLOPs.
 
 This demonstrates that the Transformer's architectural advantages (self-attention over all players) are fundamental, not just a result of model size.
 
@@ -51,31 +51,31 @@ The table below shows all hyperparameter configurations tested, demonstrating th
 
 | Architecture | Model Dim | Layers | Params | Inference FLOPs | Test ADE (yards) | Val Loss |
 |--------------|-----------|--------|--------|-----------------|------------------|----------|
-| **Zoo** | 32 | 1 | 2,910 | 180K | 6.68 | 3.896 |
-| **Zoo** | 32 | 2 | 5,086 | 305K | 6.22 | 3.566 |
-| **Zoo** | 32 | 4 | 11,678 | 556K | 6.03 | 3.428 |
-| **Zoo** | 32 | 8 | 24,862 | 1.1M | 6.70 ↑ | 3.903 |
-| **Zoo** | 128 | 1 | 39,222 | 2.2M | 5.86 | 3.311 |
-| **Zoo** | **128** | **2** | **72,502** | **4.2M** | **5.71** | **3.221** ← **Best Zoo** |
-| **Zoo** | 128 | 4 | 172,598 | 8.2M | 5.82 ↑ | 3.305 |
-| **Zoo** | 128 | 8 | 372,790 | 16.2M | 5.85 ↑ | 3.347 |
-| **Zoo** | 512 | 1 | 599,190 | 32.6M | 5.72 | 3.229 |
-| **Zoo** | 512 | 2 | 1,125,526 | 64.4M | 5.76 ↑ | 3.282 |
-| **Zoo** | 512 | 4 | 2,705,558 | 128.4M | 5.80 ↑ | 3.292 |
-| **Zoo** | 512 | 8 | 5,865,622 | 256.3M | 5.93 ↑ | 3.374 |
+| **Zoo** | 32 | 1 | 2,910 | 361K | 6.68 | 3.896 |
+| **Zoo** | 32 | 2 | 5,086 | 611K | 6.22 | 3.566 |
+| **Zoo** | 32 | 4 | 11,678 | 1.1M | 6.03 | 3.428 |
+| **Zoo** | 32 | 8 | 24,862 | 2.2M | 6.70 ↑ | 3.903 |
+| **Zoo** | 128 | 1 | 39,222 | 4.4M | 5.86 | 3.311 |
+| **Zoo** | **128** | **2** | **72,502** | **8.4M** | **5.71** | **3.221** ← **Best Zoo** |
+| **Zoo** | 128 | 4 | 172,598 | 16.5M | 5.82 ↑ | 3.305 |
+| **Zoo** | 128 | 8 | 372,790 | 32.6M | 5.85 ↑ | 3.347 |
+| **Zoo** | 512 | 1 | 599,190 | 65.3M | 5.72 | 3.229 |
+| **Zoo** | 512 | 2 | 1,125,526 | 128.9M | 5.76 ↑ | 3.282 |
+| **Zoo** | 512 | 4 | 2,705,558 | 257.1M | 5.80 ↑ | 3.292 |
+| **Zoo** | 512 | 8 | 5,865,622 | 513.5M | 5.93 ↑ | 3.374 |
 | | | | | | | |
-| **Transformer** | 32 | 1 | 14,358 | 287K | 5.14 | 2.885 |
-| **Transformer** | 32 | 2 | 27,062 | 564K | 5.12 | 2.846 |
-| **Transformer** | **32** | **4** | **52,470** | **1.1M** | **4.90** | **2.748** ← **Smaller than Zoo** |
-| **Transformer** | 32 | 8 | 103,286 | 2.2M | 4.90 | 2.701 |
-| **Transformer** | 128 | 1 | 220,206 | 4.4M | 4.69 | 2.588 |
-| **Transformer** | 128 | 2 | 418,478 | 8.8M | 4.64 | 2.567 |
-| **Transformer** | 128 | 4 | 815,022 | 17.5M | 4.60 | 2.561 |
-| **Transformer** | 128 | 8 | 1,608,110 | 34.9M | 4.65 | 2.577 |
-| **Transformer** | 512 | 1 | 3,485,838 | 69.8M | 4.69 | 2.616 |
-| **Transformer** | **512** | **2** | **6,638,222** | **139.1M** | **4.57** | **2.554** ← **Best Transformer** |
-| **Transformer** | 512 | 4 | 12,942,990 | 277.7M | 4.61 | 2.567 |
-| **Transformer** | 512 | 8 | 25,552,526 | 555.0M | 4.66 | 2.588 |
+| **Transformer** | 32 | 1 | 14,358 | 574K | 5.14 | 2.885 |
+| **Transformer** | 32 | 2 | 27,062 | 1.1M | 5.12 | 2.846 |
+| **Transformer** | **32** | **4** | **52,470** | **2.2M** | **4.90** | **2.748** ← **Smaller than Zoo** |
+| **Transformer** | 32 | 8 | 103,286 | 4.4M | 4.90 | 2.701 |
+| **Transformer** | 128 | 1 | 220,206 | 8.8M | 4.69 | 2.588 |
+| **Transformer** | 128 | 2 | 418,478 | 17.5M | 4.64 | 2.567 |
+| **Transformer** | 128 | 4 | 815,022 | 34.8M | 4.60 | 2.561 |
+| **Transformer** | 128 | 8 | 1,608,110 | 69.5M | 4.65 | 2.577 |
+| **Transformer** | 512 | 1 | 3,485,838 | 139.4M | 4.69 | 2.616 |
+| **Transformer** | **512** | **2** | **6,638,222** | **277.9M** | **4.57** | **2.554** ← **Best Transformer** |
+| **Transformer** | 512 | 4 | 12,942,990 | 555.0M | 4.61 | 2.567 |
+| **Transformer** | 512 | 8 | 25,552,526 | 1109.1M | 4.66 | 2.588 |
 
 ### Key Observations
 
@@ -90,8 +90,8 @@ The table below shows all hyperparameter configurations tested, demonstrating th
 - Clear improvement trend with model capacity (11% better performance at 460× larger size)
 
 **3. Architectural Superiority at Matched Sizes:**
-- **Transformer M32_L4**: 52K params, 1.1M FLOPs → **4.90 yards**
-- **Zoo M128_L2**: 72K params, 4.2M FLOPs → **5.71 yards**
+- **Transformer M32_L4**: 52K params, 2.2M FLOPs → **4.90 yards**
+- **Zoo M128_L2**: 72K params, 8.4M FLOPs → **5.71 yards**
 - Transformer wins with **fewer parameters and 4× fewer FLOPs**
 
 **4. Why Zoo Doesn't Scale:**
@@ -211,5 +211,5 @@ Comprehensive comparison of all 24 trained models with computational metrics.
 **Notes:**
 - `params`: Total trainable parameters
 - `inference_flops`: Floating point operations per single frame inference (batch_size=1)
-- Calculated using Facebook's `fvcore.nn.FlopCountAnalysis`
+- Calculated using the `calflops` library, which properly accounts for transformer attention operations
 - Sorted by model_type, then params

@@ -193,21 +193,21 @@ While GNNs offer a natural representation of players on a field, Transformers pr
 \item \citet{alcorn2021baller2vec} demonstrates empirically that Transformers outperform this specific GNN approach.
 \end{itemize}
 \subsubsection{The Zoo}
-\citet{TheZoo2020} is a research group developed a model architecture that won the 2020 NFL Big Data Bowl in Kaggle challenge. This victory, along with the Big Data Bowl's growing prominence, led to The Zoo Architecture (TZA) becoming a de-facto equivariant deep learning approach used by entrants in following competitions. Furthermore, this architecture powers models and stats distributed by the NFL's advanced wing \textit{Next Gen Stats}.
-In their submission, they identified the importance of designing for the player-order equivariance problem but discovered that their custom equivariant TZA design \textit{outperformed} Transformers with Multi-Head Attention. TZA, as shown in Figure \ref{fig:Zoo_Model_Architecture}, relies on feature engineering vectors pairwise between each offensive and defensive player, and then operating dense layers over each pairwise vector \textit{independently}, with pooling operations to eventually reduce the dimensionality into one final prediction.
+\citet{TheZoo2020} is a research group developed a model architecture that won the 2020 NFL Big Data Bowl in Kaggle challenge. This victory, along with the Big Data Bowl's growing prominence, led to The Zoo Architecture (hereafter referred to as Zoo) becoming a de-facto equivariant deep learning approach used by entrants in following competitions. Furthermore, this architecture powers models and stats distributed by the NFL's advanced wing \textit{Next Gen Stats}.
+In their submission, they identified the importance of designing for the player-order equivariance problem but discovered that their custom equivariant Zoo design \textit{outperformed} Transformers with Multi-Head Attention. Zoo, as shown in Figure \ref{fig:Zoo_Model_Architecture}, relies on feature engineering vectors pairwise between each offensive and defensive player, and then operating dense layers over each pairwise vector \textit{independently}, with pooling operations to eventually reduce the dimensionality into one final prediction.
 \begin{figure}[h]
     \centering
     \includegraphics[width=1\linewidth]{The Zoo Architecture.png}
     \caption{Simplified Structure of The Zoo Architecture that rose to prominence in modeling spatiotemporal NFL tracking data. It was designed to predict a categorical distribution over the number of yards gained on rushing plays using tracking frames at time of handoff. The model relies on manually constructing "interaction" feature vectors pairwise between each offensive and defensive player. The model then essentially treats these "interaction" feature vectors as independent throughout, with no mechanism to learn across player dimension. After applying a few dense layers to each interaction vector, pooling is applied to collect the most salient learned features across the offensive player and then defensive player dimension.\\}
     \label{fig:Zoo_Model_Architecture}
 \end{figure}
-While not explicitly cited, we find many similarities between TZA and the DeepSet approach. We expect TZA to be architecturally inferior for similar reasons:
+While not explicitly cited, we find many similarities between Zoo and the DeepSet approach. We expect Zoo to be architecturally inferior for similar reasons:
 \begin{itemize}
 \item It is not a true end-to-end approach, relying on manual feature engineering.
 \item The independent processing of pairwise vectors may limit the model's ability to capture complex, multi-player interactions.
 \item The reliance on multiple intermediate pooling operations may lead to loss of important spatial information.
 \end{itemize}
-Furthermore, in our Experiments (Section \ref{experiments}), we demonstrate this inferiority empirically in a similar, but slightly more general task than what TZA was originally optimized for. We find that while TZA may have achieved impressive performance for that original dataset and specific task, it does not extend generally to other problems, even those that are just slightly different.
+Furthermore, in our Experiments (Section \ref{experiments}), we demonstrate this inferiority empirically in a similar, but slightly more general task than what Zoo was originally optimized for. We find that while Zoo may have achieved impressive performance for that original dataset and specific task, it does not extend generally to other problems, even those that are just slightly different.
 
 \section{Experiments}
 \label{experiments}
@@ -223,7 +223,7 @@ Key characteristics of the dataset include:
 For our modeling objective, we chose to predict the $(x, y)$ position of the tackle. This task was selected for several reasons:
 \begin{enumerate}
 \item Alignment with the dataset's tackling theme
-\item Similarity to tasks that previous equivariant architectures (e.g., TZA) were designed for, allowing for meaningful comparisons
+\item Similarity to tasks that previous equivariant architectures (e.g., Zoo) were designed for, allowing for meaningful comparisons
 \item Generalizability across various football situations (e.g., post-handoff, post-pass catch, during scrambles)
 \item Continuous output space, presenting a regression problem rather than a classification task
 \end{enumerate}
@@ -241,8 +241,18 @@ For our experiments, we treated each frame as an independent input, although the
 \item Validation set: ~2,000 unique plays, ~150,000 frames
 \item Test set: ~2,000 unique plays, ~150,000 frames
 \end{itemize}
+
+\subsection{Evaluation Metric}
+We evaluate model performance using Average Displacement Error (ADE), a standard metric for spatial prediction tasks. ADE measures the average Euclidean distance between predicted and actual tackle locations:
+
+\begin{equation}
+\text{ADE} = \frac{1}{N}\sum_{i=1}^{N} \sqrt{(x_{\text{pred}}^{(i)} - x_{\text{true}}^{(i)})^2 + (y_{\text{pred}}^{(i)} - y_{\text{true}}^{(i)})^2}
+\end{equation}
+
+where $N$ is the number of predictions, and coordinates are measured in yards on the football field. Lower ADE values indicate more accurate tackle location predictions.
+
 \subsection{Models}
-To evaluate the effectiveness of the Transformer architecture in sports analytics, we compare it against The Zoo Architecture (TZA), a baseline model that has shown success in similar tasks. To ensure a fair comparison, both models share the same AdamW optimizer, learning rate, and Huber Loss function. The Huber Loss balances L1 Loss for outliers with L2 Loss for predictions close to the target, providing robustness and numerical stability to our training. 
+To evaluate the effectiveness of the Transformer architecture in sports analytics, we compare it against The Zoo Architecture, a baseline model that has shown success in similar tasks. To ensure a fair comparison, both models share the same AdamW optimizer, learning rate, and SmoothL1Loss function (also known as Huber Loss). The SmoothL1Loss balances L1 Loss for outliers with L2 Loss for predictions close to the target, providing robustness and numerical stability to our training.
 We conducted a grid search over learning rates, model sizes, and number of layers for both models, while keeping batch size and dropout fixed. This approach allows us to isolate the impact of architectural differences on model performance.  The results are from the best model picked over the grid search.
 \subsubsection{Transformer Model Experiment}
 For the Transformer model in this experiment, we define the set of feature vectors $V = \{v_1, v_2, ..., v_K\}$ over the $K = 22$ players, where each $v_k \in \mathbb{R}^6$ represents the features of player $p_k$. Specifically, each feature vector $v_k$ is composed of:
@@ -264,7 +274,7 @@ The TransformerEncoder model $f: (\mathbb{R}^6)^{22} \rightarrow (\mathbb{R}^d)^
     \hat{y} = (\hat{x}_{tackle}, \hat{y}_{tackle}) = g(f(V)) = g(f(\{v_1, v_2, ..., v_{22}\}))
 \end{equation}
 \subsubsection{The Zoo Architecture Model Details}
-For our TZA, we have to perform a complex pairwise feature interaction process $\Phi:  V \rightarrow (\mathbb{R}^{10})^{10\cdot11}$ that converts $V = \{v_1, v_2, ..., v_K\}$ over the $K = 22$ players into 110 interaction vectors. Specifically, each interaction vector $u_{ij}$ between offensive player $p_i$ and defensive player $p_j$ with ball carrier $p_b$ is composed of:
+For our Zoo, we have to perform a complex pairwise feature interaction process $\Phi:  V \rightarrow (\mathbb{R}^{10})^{10\cdot11}$ that converts $V = \{v_1, v_2, ..., v_K\}$ over the $K = 22$ players into 110 interaction vectors. Specifically, each interaction vector $u_{ij}$ between offensive player $p_i$ and defensive player $p_j$ with ball carrier $p_b$ is composed of:
 \begin{equation}
 u_{ij} = [vx_j, vy_j, x_j - x_b, y_j - y_b, vx_j - vx_b, vy_j - vy_b, x_i - x_j, y_i - y_j, vx_i - vx_j, vy_i - vy_j]
 \end{equation}
@@ -275,51 +285,119 @@ where:
     \item $p_b$ is the ball carrier
 \end{itemize}
 
-Then TZA model $g: (\mathbb{R}^{10})^{10\cdot11} \rightarrow \mathbb{R}^2$ applies successive MLPs to interaction vectors independently, only pooling across to reduce dimensionality.
+Then Zoo model $g: (\mathbb{R}^{10})^{10\cdot11} \rightarrow \mathbb{R}^2$ applies successive MLPs to interaction vectors independently, only pooling across to reduce dimensionality.
 
 \section{Results}
+
+\subsection{Overall Performance}
+
+Our evaluation on a held-out test set reveals that the Transformer model substantially outperforms Zoo by 20.0\% in Average Displacement Error (ADE), measured in yards. Table \ref{tab:overall_performance_comparison} shows performance across all data splits.
+
 \begin{table}[h]
-	\caption{Test Set Event-Frame Performance Comparison (Mean Squared Error)}
+	\caption{Overall Performance Comparison Across Data Splits}
 	\centering
-	\begin{tabular}{|c|c|c|c|c|c|c}
+	\begin{tabular}{|c|c|c|c|c|c|}
 	\hline
-    \textbf{event} & \textbf{n} & \textbf{Transformer} & \textbf{Zoo } & \textbf{\% diff} \\
+    \textbf{Split} & \textbf{Zoo (yards)} & \textbf{Transformer (yards)} & \textbf{Improvement \%} & \textbf{Improvement (yards)} & \textbf{Plays} \\
     \hline
-    ball snap & 1916 & 66.3 & 67.1 & -0.9 \\
+    Train & 4.90 & 3.97 & 19.0\% & 0.93 & 8,735 \\
     \hline
-    handoff & 1776 & 39.7 & 40.7 & 0.2 \\
+    Val & 5.81 & 4.68 & 19.4\% & 1.13 & 1,872 \\
     \hline
-    pass caught & 1684 & 16.0 & 18.2 & 10.5 \\
+    Test & 5.71 & 4.57 & 20.0\% & 1.14 & 1,871 \\
     \hline
-     first contact & 3156 & 9.0 & 12.5 & 28.0 \\
+	\end{tabular}
+	\label{tab:overall_performance_comparison}
+\end{table}
+
+\subsection{Performance by Event Type}
+
+\begin{table}[h]
+	\caption{Test Set Event-Frame Performance Comparison (Average Displacement Error in Yards)}
+	\centering
+	\begin{tabular}{|c|c|c|c|c|c|}
+	\hline
+    \textbf{Event} & \textbf{Plays} & \textbf{Zoo (yards)} & \textbf{Transformer (yards)} & \textbf{Improvement \%} & \textbf{Improvement (yards)} \\
     \hline
-     out of bounds & 544 & 3.7 & 13.0 & 64.8 \\
+    Ball Snap & 958 & 8.64 & 8.90 & -3.0\% & -0.26 \\
     \hline
-     tackle & 2994 &  1.5 & 9.2 & 71.3\\
+    Handoff & 887 & 6.63 & 6.51 & 1.8\% & 0.12 \\
+    \hline
+    Run & 142 & 7.69 & 7.01 & 8.8\% & 0.68 \\
+    \hline
+    Pass Arrived & 732 & 4.95 & 4.64 & 6.3\% & 0.31 \\
+    \hline
+    Pass Outcome Caught & 842 & 4.46 & 4.17 & 6.5\% & 0.29 \\
+    \hline
+    First Contact & 1,578 & 3.96 & 2.90 & 26.8\% & 1.06 \\
+    \hline
+    Out of Bounds & 272 & 5.37 & 1.68 & 68.7\% & 3.69 \\
+    \hline
+    Tackle & 1,497 & 4.03 & 1.02 & 74.7\% & 3.01 \\
     \hline
 	\end{tabular}
 	\label{tab:event_frame_results_comparison}
 \end{table}
-Our evaluation on a held-out test set reveals that the Transformer model outperforms TZA by 20.4\% in our score of Mean Average Error (MAE).
 A breakdown of performance by specific game events provides further insights into the strengths of each model (Table \ref{tab:event_frame_results_comparison}).
 
-Notably, both models perform comparably for early-play events such as ball snap and handoff. TZA's strong performance in these situations aligns with its original optimization for handoff-related tasks, demonstrating its effectiveness in specific, well-defined scenarios.
+Notably, both models perform comparably for early-play events such as ball snap and handoff. Zoo's strong performance in these situations aligns with its original optimization for handoff-related tasks, demonstrating its effectiveness in specific, well-defined scenarios.
 
 However, the Transformer model's advantage becomes increasingly apparent in later-play events, particularly out of bounds and tackle situations. In these cases, where the prediction target is essentially the ball carrier's current location, the Transformer shows a superior ability to recognize play-ending situations and adapt to diverse game contexts.
 
-This pattern is continued when we plot score based on temporal distance from the frame of tackle (Figure \ref{frame_diff}). Figure \ref{fig:CMC_big_run} shows a visual example of the Transformer generalizing to unseen frames in the test set significantly better than TZA is able to.
+This pattern is continued when we analyze performance based on temporal distance from the frame of tackle (Figure \ref{fig:frame_diff}).
+
+\subsection{Performance by Frames Before Tackle}
+
+Table \ref{tab:frames_before_tackle_comparison} presents a detailed breakdown of model performance at different temporal distances from the tackle. This analysis reveals how the Transformer's architectural advantages manifest across the progression of each play.
+
+\begin{table}[h]
+	\caption{Test Set Performance by Frames Before Tackle}
+	\centering
+	\begin{tabular}{|c|c|c|c|c|}
+	\hline
+    \textbf{Frames Before Tackle} & \textbf{Zoo (yards)} & \textbf{Transformer (yards)} & \textbf{Improvement \%} & \textbf{Improvement (yards)} \\
+    \hline
+    After tackle & 4.51 & 1.18 & 73.8\% & 3.33 \\
+    \hline
+    0-5 frames & 4.12 & 1.26 & 69.4\% & 2.86 \\
+    \hline
+    5-10 frames & 3.71 & 1.57 & 57.7\% & 2.14 \\
+    \hline
+    10-15 frames & 3.54 & 2.22 & 37.3\% & 1.32 \\
+    \hline
+    15-20 frames & 3.82 & 3.13 & 18.1\% & 0.69 \\
+    \hline
+    20-25 frames & 4.44 & 4.11 & 7.4\% & 0.33 \\
+    \hline
+    25-30 frames & 5.23 & 5.04 & 3.6\% & 0.19 \\
+    \hline
+    30+ frames & 9.46 & 9.48 & -0.2\% & -0.02 \\
+    \hline
+	\end{tabular}
+	\label{tab:frames_before_tackle_comparison}
+\end{table}
+
+The data reveals a striking contrast in how the two architectures handle predictions as plays develop. Far from the tackle (30+ frames), both models perform similarly poorly (~9.5 yards error) when the play outcome is highly uncertain. However, as plays progress toward the tackle, the models diverge dramatically:
+
+\textbf{The Transformer continuously improves}, leveraging increasing spatial information: 9.48 → 5.04 → 4.11 → 3.13 → 2.22 → 1.57 → 1.26 → 1.18 yards error.
+
+\textbf{The Zoo model actually degrades} near critical moments: after reaching its best performance at 10-15 frames (3.54 yards), it gets progressively worse as the tackle approaches: 3.54 → 3.71 (5-10 frames) → 4.12 (0-5 frames) → 4.51 (after tackle).
+
+This failure to generalize near the tackle—the most information-rich and crucial moment—reveals a fundamental limitation of the Zoo architecture's pairwise-only interaction modeling. In contrast, the Transformer's self-attention mechanism excels at capturing the complex convergence of defensive players and ball carrier dynamics, achieving 57.7\% to 73.8\% improvement near the tackle. Figure \ref{fig:frame_diff} visualizes this pattern.
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.5\linewidth]{chart frame diff.png}
-    \caption{Plot showing how the models perform comparably early in plays but The Zoo Model fails to generalize as we arrive in more varied situations}
+    \includegraphics[width=0.75\linewidth]{../results/frame_difference_plot.png}
+    \caption{Performance by Frames Before Tackle. The plot reveals a critical architectural difference: while the Transformer (blue) continuously improves as plays progress toward the tackle (9.48 → 1.18 yards), the Zoo model (orange) actually degrades near critical moments (3.54 → 4.51 yards from 10-15 frames to after tackle). Both models perform similarly far from the tackle (30+ frames, ~9.5 yards), but the Transformer's self-attention mechanism excels at leveraging rich spatial information during crucial moments, achieving up to 73.8\% improvement after the tackle.}
     \label{fig:frame_diff}
 \end{figure}
 
+Figure \ref{fig:CMC_big_run} shows a visual example of the Transformer generalizing to unseen frames in the test set significantly better than Zoo is able to.
+
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.75\linewidth]{cmc_bigrun.png}
-    \caption{Visualization of a frame from the test set showing improved generalization from the Transformer. The green hexagon (\#22) is the ball-carrier, green cross is the true tackle location. Yellow and blue crosses represent predictions from Transformer and Zoo models respectively} 
+    \includegraphics[width=0.75\linewidth]{../results/cmc_bigrun.png}
+    \caption{Visualization of a frame from the test set showing improved generalization from the Transformer. The green hexagon (\#22) is the ball-carrier, green cross is the true tackle location. Yellow and blue crosses represent predictions from Transformer and Zoo models respectively}
     \label{fig:CMC_big_run}
 \end{figure}
 \section{Supporting Work}
