@@ -1,14 +1,20 @@
 ```mermaid
 flowchart TD
-	node1["get_bdb_2024_data"]
-	node2["precompute_datasets"]
-	node3["prep_data"]
-	node4["train_transformer_model"]
-	node5["train_zoo_model"]
-	node6["unzip_bdb_2024_data"]
-	node1-->node6
-	node2-->node4
-	node2-->node5
-	node3-->node2
+	node1["generate_results"]
+	node2["get_bdb_2024_data"]
+	node3["pick_best_models"]
+	node4["precompute_datasets"]
+	node5["prep_data"]
+	node6["train_transformer_models"]
+	node7["train_zoo_models"]
+	node8["unzip_bdb_2024_data"]
+	node2-->node8
+	node3-->node1
+	node4-->node6
+	node4-->node7
+	node5-->node1
+	node5-->node4
 	node6-->node3
+	node7-->node3
+	node8-->node5
 ```

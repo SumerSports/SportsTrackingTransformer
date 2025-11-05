@@ -25,7 +25,7 @@ We hope this work catalyzes a shift in sports analytics research methodologies, 
 This repository accompanies our research paper:
 - **Full Paper**: [`Attention is All You Need, for Sports Tracking Data.pdf`](./paper/Attention%20is%20All%20You%20Need,%20for%20Sports%20Tracking%20Data.pdf)
 - **LaTeX Source**: [`Attention is All You Need, for Sports Tracking Data.tex`](./paper/Attention%20is%20All%20You%20Need,%20for%20Sports%20Tracking%20Data.tex)
-- **Workshop Slides**: [`CMSAC Workshop Notes.pdf`](./paper/CMSAC%20Workshop%20Notes.pdf) - Presented at the Carnegie Mellon Sports Analytics Conference
+- **Workshop Slides**: [`Transformers_CMSAC_Workshop_notes.pdf`](./paper/Transformers_CMSAC_Workshop_notes.pdf) - Presented at the Carnegie Mellon Sports Analytics Conference
 
 ## Getting Started
 
@@ -43,6 +43,30 @@ After cloning the repo and opening a new terminal inside the repo workspace, per
 
 1. Run `uv sync` to create a `.venv` and install all dependencies
 2. Run `source .venv/bin/activate` (or `.venv\Scripts\activate` on Windows) to activate the virtual environment
+
+## Repository Structure
+
+```
+sports-tracking-transformer/
+├── src/                          # Source code
+│   ├── models.py                 # Transformer and Zoo architecture implementations
+│   ├── datasets.py               # Dataset loading and preprocessing
+│   ├── train.py                  # Model training script
+│   ├── prep_data.py              # Data preparation pipeline
+│   ├── generate_results_summary.py  # Results analysis and summary generation
+│   └── pick_best_models.py       # Best model selection logic
+├── paper/                        # Research paper and materials
+│   ├── Attention is All You Need, for Sports Tracking Data.pdf
+│   ├── Attention is All You Need, for Sports Tracking Data.tex
+│   ├── Transformers_CMSAC_Workshop_notes.pdf
+│   └── Sumer Sports Transformer Simple Arch.jpg
+├── results/                      # Pre-computed results
+│   ├── RESULTS.md                # Detailed metrics and analysis
+│   └── animated_results_visualization.ipynb  # Interactive visualizations
+├── dvc.yaml                      # DVC pipeline configuration
+├── pipeline.md                   # Pipeline visualization (Mermaid diagram)
+└── pyproject.toml                # Python dependencies (uv/pip)
+```
 
 ## Reproducing the Pipeline
 
