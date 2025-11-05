@@ -35,6 +35,15 @@ from models import LitModel
 MODELS_PATH = Path("models")
 MODELS_PATH.mkdir(exist_ok=True)
 
+# Set random seeds for reproducibility
+torch.manual_seed(42)
+np.random.seed(42)
+random.seed(42)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(42)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
 
 def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None, devices=1) -> pl.DataFrame:
     """

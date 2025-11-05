@@ -30,7 +30,7 @@ stages:
         persist: true
 
   train_zoo_models:
-    cmd: uv run python src/train.py --model_type zoo --device 0
+    cmd: uv run python src/train.py --model_type zoo --device 0 --skip-existing
 
     deps:
     - src/train.py
@@ -43,7 +43,7 @@ stages:
         cache: true
 
   train_transformer_models:
-    cmd: uv run python src/train.py --model_type transformer --device 0
+    cmd: uv run python src/train.py --model_type transformer --device 0 --skip-existing
 
     deps:
     - src/train.py
