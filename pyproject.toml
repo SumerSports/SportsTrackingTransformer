@@ -18,6 +18,7 @@ dependencies = [
     "nbformat>=5.10.4",
     "calflops>=0.3.2",
     "transformers>=4.57.1",
+    "tensorboard>=2.17.1",
 ]
 
 [tool.ruff]

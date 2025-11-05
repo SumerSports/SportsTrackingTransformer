@@ -81,6 +81,13 @@ This runs all stages including training 24 model configurations (~8-12 hours on 
 
 **Note:** The original NFL Big Data Bowl 2024 dataset was removed from Kaggle by the host. For reproducibility, we've hosted the dataset in [GitHub Releases](https://github.com/SumerSports/SportsTrackingTransformer/releases/tag/data-v1.0). The DVC pipeline automatically downloads it from there.
 
+## Monitoring Training with TensorBoard
+
+TensorBoard provides interactive visualizations of training metrics. You can view training and validation loss curves for each of the 24 model configurations, compare performance across different hyperparameters, and monitor training progress in real-time.
+
+```bash
+uv run tensorboard --logdir models/
+```
 
 ## Pre-trained Models
 
