@@ -1,11 +1,12 @@
 stages:
   get_bdb_2024_data:
-    # Download from GitHub releases since Kaggle dataset was removed by host
+    # Download dataset from GitHub releases (~1-2 minutes)
     cmd: wget -q https://github.com/SumerSports/SportsTrackingTransformer/releases/download/data-v1.0/nfl-big-data-bowl-2024.tar.zst -O data/nfl-big-data-bowl-2024.tar.zst
     outs:
     - data/nfl-big-data-bowl-2024.tar.zst
 
   unzip_bdb_2024_data:
+    # Decompress and extract dataset (~2-3 minutes)
     cmd: uv run zstd -d data/nfl-big-data-bowl-2024.tar.zst -c | tar -xf - -C data
     deps:
     - data/nfl-big-data-bowl-2024.tar.zst
@@ -13,6 +14,7 @@ stages:
     - data/bdb_2024
 
   prep_data:
+    # Prepare and split data into train/val/test sets (~10-20 minutes)
     cmd: uv run python src/prep_data.py
     deps:
     - src/prep_data.py
@@ -20,7 +22,9 @@ stages:
     outs:
     - data/split_prepped_data/
 
-  precompute_datasets: # this might take an hour or 2
+  precompute_datasets:
+    # Pre-compute feature transforms for all splits (test: 5-10 mins, val: 5-10 mins, train: 20-30 mins per model type)
+    # Total: ~1.5 hours for both zoo and transformer datasets (6 datasets total)
     cmd: uv run python src/datasets.py
     deps:
     - src/datasets.py
@@ -30,6 +34,8 @@ stages:
         persist: true
 
   train_zoo_models:
+    # Train 12 zoo models (M32/M128/M512 × L1/L2/L4/L8)
+    # Total: ~4-6 hours on GPU with --skip-existing flag (skips if checkpoints exist)
     cmd: uv run python src/train.py --model_type zoo --device 0 --skip-existing
 
     deps:
@@ -43,6 +49,8 @@ stages:
         cache: true
 
   train_transformer_models:
+    # Train 12 transformer models (M32/M128/M512 × L1/L2/L4/L8)
+    # Total: ~4-6 hours on GPU with --skip-existing flag (skips if checkpoints exist)
     cmd: uv run python src/train.py --model_type transformer --device 0 --skip-existing
 
     deps:
@@ -56,6 +64,7 @@ stages:
         cache: true
 
   pick_best_models:
+    # Select best models based on validation loss (~1-2 minutes)
     cmd: uv run python src/pick_best_models.py
 
     deps:
@@ -70,6 +79,7 @@ stages:
         persist: false
 
   generate_results:
+    # Generate results summary and plots (~5-10 minutes)
     cmd: uv run python src/generate_results_summary.py
 
     deps:

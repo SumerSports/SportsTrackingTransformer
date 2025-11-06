@@ -50,26 +50,26 @@ stages:
       nfiles: 6
     - path: src/datasets.py
       hash: md5
-      md5: 7a55c6da0692ba16f6bc83eb88037785
-      size: 12960
+      md5: 9793656630b2820635c6bbccb1657c57
+      size: 13278
     outs:
     - path: data/datasets/
       hash: md5
-      md5: a4640f01fe159985a349b458269c3d68.dir
-      size: 18404106731
-      nfiles: 6
+      md5: f053ab8cf0248fbbfa7a73b50eb65759.dir
+      size: 20102260403
+      nfiles: 7
   train_zoo_models:
     cmd: uv run python src/train.py --model_type zoo --device 0 --skip-existing
     deps:
     - path: data/datasets/zoo/
       hash: md5
-      md5: 3eca75a7cb6ad04a998bfe41b4bcbca7.dir
-      size: 11254026456
-      nfiles: 3
+      md5: 7842d5520da4ceaa82c3c1c3af88f19b.dir
+      size: 12952180128
+      nfiles: 4
     - path: src/datasets.py
       hash: md5
-      md5: 7a55c6da0692ba16f6bc83eb88037785
-      size: 12960
+      md5: 9793656630b2820635c6bbccb1657c57
+      size: 13278
     - path: src/models.py
       hash: md5
       md5: f13901ccf658c2686b486482f8c76b10
@@ -89,13 +89,13 @@ stages:
     deps:
     - path: data/datasets/transformer
       hash: md5
-      md5: e98af61462b1cb9db8121d39019cabb2.dir
+      md5: 60b1b27e7f6d146e203ac16f9180b800.dir
       size: 7150080275
       nfiles: 3
     - path: src/datasets.py
       hash: md5
-      md5: 7a55c6da0692ba16f6bc83eb88037785
-      size: 12960
+      md5: 9793656630b2820635c6bbccb1657c57
+      size: 13278
     - path: src/models.py
       hash: md5
       md5: f13901ccf658c2686b486482f8c76b10
@@ -125,8 +125,8 @@ stages:
       nfiles: 53
     - path: src/datasets.py
       hash: md5
-      md5: 7a55c6da0692ba16f6bc83eb88037785
-      size: 12960
+      md5: 9793656630b2820635c6bbccb1657c57
+      size: 13278
     - path: src/models.py
       hash: md5
       md5: f13901ccf658c2686b486482f8c76b10

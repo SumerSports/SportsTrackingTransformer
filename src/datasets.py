@@ -28,6 +28,7 @@ Usage:
 
 import multiprocessing as mp
 import pickle
+import random
 import time
 from pathlib import Path
 
@@ -36,6 +37,10 @@ import pandas as pd
 import polars as pl
 from torch.utils.data import Dataset
 from tqdm import tqdm
+
+# Set random seeds for reproducibility
+np.random.seed(42)
+random.seed(42)
 
 PREPPED_DATA_DIR = Path("data/split_prepped_data/")
 DATASET_DIR = Path("data/datasets/")
@@ -78,7 +83,8 @@ class BDB2024_Dataset(Dataset):
             raise ValueError("model_type must be either 'transformer' or 'zoo'")
 
         self.model_type = model_type
-        self.keys = list(feature_df.select(["gameId", "playId", "mirrored", "frameId"]).unique().rows())
+        # Sort keys to ensure deterministic ordering across runs
+        self.keys = sorted(feature_df.select(["gameId", "playId", "mirrored", "frameId"]).unique().rows())
 
         # Convert to pandas form with index for quick row retrieval
         self.feature_df_partition = (
@@ -93,6 +99,7 @@ class BDB2024_Dataset(Dataset):
         )
 
         # Precompute features and store in dicts
+        # Note: Using pool.map() preserves input order, ensuring deterministic dictionary construction
         self.tgt_arrays: dict[tuple, np.ndarray] = {}
         self.feature_arrays: dict[tuple, np.ndarray] = {}
         with mp.Pool(processes=min(8, mp.cpu_count())) as pool:
@@ -100,7 +107,7 @@ class BDB2024_Dataset(Dataset):
                 self.process_key,
                 tqdm(self.keys, desc="Pre-computing feature transforms", total=len(self.keys)),
             )
-            # Unpack results
+            # Unpack results in the same order as self.keys (pool.map guarantees order)
             for key, tgt_array, feature_array in results:
                 self.tgt_arrays[key] = tgt_array
                 self.feature_arrays[key] = feature_array
