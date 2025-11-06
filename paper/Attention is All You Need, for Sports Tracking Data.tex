@@ -56,7 +56,7 @@ pdfkeywords={sports analytics, sports tracking data, latent representation learn
 \maketitle
 
 \begin{abstract}
-The rapid advancement of spatial tracking technologies in sports has led to an unprecedented surge in high-quality, high-volume data across all levels of play. While this data has catalyzed innovations in sports analytics, current methodologies for team sports often struggle with the inherent challenge of the player-ordering problem. This paper highlights the application of Transformer architectures and Attention to address these challenges in sports analytics. Our approach operates end-to-end on raw player tracking data, processes unordered collections of player vectors, and is inherently designed to learn pairwise spatial interactions between players. The framework satisfies critical criteria for widespread adoption in sports modeling: minimal feature engineering, adaptability across diverse problems, and accessibility in terms of understandability and reproducibility. To demonstrate its effectiveness, we apply our approach to the task of predicting tackling location in the NFL, a problem recently explored in the public domain. Our results show significant improvements over commonly used approaches, achieving 20\% better prediction accuracy (4.61 vs 5.78 yards average displacement error) and particularly excelling in generalizing to diverse game situations. This work aims to advance sports analytics research methodologies by demonstrating the potential of Transformer-based architectures over traditional models. The potential implications include unlocking new insights into player dynamics, team strategies, and game outcomes across various sports domains, paving the way for more sophisticated deep learning models in sports analytics. \footnote{ Our code is openly available \href{https://github.com/SumerSports/SportsTrackingTransformer}{here}}
+The rapid advancement of spatial tracking technologies in sports has led to an unprecedented surge in high-quality, high-volume data across all levels of play. While this data has catalyzed innovations in sports analytics, current methodologies for team sports often struggle with the inherent challenge of the player-ordering problem. This paper presents the application of Transformer architectures to address these challenges in sports analytics. Our approach operates end-to-end on raw player tracking data, processes unordered collections of player vectors, and learns pairwise spatial interactions between players through self-attention mechanisms. The architecture is sport-agnostic and feature-flexible, accepting any set of spatiotemporal features available in tracking systems without requiring sport-specific modifications. To demonstrate effectiveness, we apply our approach to predicting tackle location in the NFL using the 2024 Big Data Bowl dataset. Our results show significant improvements over The Zoo Architecture, the current standard in sports deep learning, achieving 20.2\% better prediction accuracy (4.61 vs 5.78 yards average displacement error) and particularly excelling in generalizing to diverse game situations. Notably, the Transformer maintains consistent performance improvement as plays develop, while traditional approaches degrade near critical moments. This work establishes Transformer-based architectures as a superior alternative to traditional models in sports analytics, with implications for player evaluation, strategy analysis, and performance prediction across all team sports utilizing tracking data.\footnote{Our code is openly available at \href{https://github.com/SumerSports/SportsTrackingTransformer}{https://github.com/SumerSports/SportsTrackingTransformer}}
 \end{abstract}
 % keywords can be removed
 \keywords{sports analytics \and sports tracking data \and latent representation learning \and multi-agent spatiotemporal modeling}
@@ -68,8 +68,8 @@ These hand-designed feature extractors or ordering approaches, while functional,
 Furthermore, we posit that the majority of modeling tasks involving sports player tracking share a fundamental objective: learning pairwise spatial interactions between players. Models adept at capturing these interactions are likely to excel in event prediction and other supervised tasks that necessitate a nuanced understanding of player positioning within the context of sport-specific rules and dynamics. This observation motivates our exploration of novel architectural approaches that can inherently handle unordered sets of player data while capturing complex spatial relationships.
 To address these challenges, this paper highlights the application of Transformer architectures as a modeling framework for sports analytics. Transformers, originally developed for natural language processing tasks, have shown remarkable capabilities in handling sequential and unordered data across various domains. Our proposed approach satisfies several critical criteria:
 \begin{enumerate}
-\item End-to-end operation on raw player tracking data with minimal feature engineering, ensuring flexibility and adaptability across diverse sports modeling problems.
-\item Capability to process unordered collections of player vectors, directly addressing the player-ordering problem.
+\item End-to-end operation on raw player tracking data with minimal feature engineering, accepting any set of spatiotemporal features (positions, velocities, orientations, player attributes, etc.) available in the tracking system.
+\item Capability to process unordered collections of player vectors, directly addressing the player-ordering problem across any team sport.
 \item Inherent design for learning pairwise player interactions.
 \item Accessibility in terms of understandability, explainability, and reproducibility.
 \end{enumerate}
@@ -77,7 +77,7 @@ Our objective is to encourage a methodological advancement in sports analytics r
 \section{Methods}
 \subsection{Sports Tracking Data}
 \label{sec:sports_tracking_data}
-\begin{table}[h]
+\begin{table}[ht]
 	\caption{Example of a Multi-Agent Tracking Frame from the NFL}
 	\centering
 	\begin{tabular}{|c|c|c|c|S[table-format=2.2]|S[table-format=2.2]|S[table-format=1.2]|S[table-format=3.2]|S[table-format=3.2]|}
@@ -179,7 +179,7 @@ In Figure \ref{fig:transformer_model_arch}, we visualize this architecture at a 
 \begin{figure}[p]
     \centering
     \includegraphics[width=1.0\textwidth, height=0.80\textheight, keepaspectratio]{Sumer Sports Transformer Simple Arch.jpg}
-    \caption{Generalized end-to-end Transformer architecture for sports tracking data. The architecture consists of: (1) an input layer ingesting raw tracking features as unordered player vectors, (2) a Transformer Player Encoder that transforms these into salient player embeddings through $L$ repeated Multi-Head Attention layers, and (3) a problem-specific decoder that pools information (when needed) from the embeddings to produce the final prediction $\hat{y}$. The center of the figure visualizes a single head of self-attention—the key mechanism enabling this approach for multi-agent problems. Each player vector is updated with weighted information from every other player, allowing the model to learn which spatial relationships matter for the prediction task. This attention-based interaction between all players creates rich contextual embeddings, a pattern we believe generalizes broadly across sports tracking modeling tasks.}
+    \caption{Generalized end-to-end Transformer architecture for sports tracking data. The architecture consists of: (1) an input layer ingesting raw tracking features as unordered player vectors, (2) a Transformer Player Encoder that transforms these into salient player embeddings through $L$ repeated Multi-Head Attention layers, and (3) a problem-specific decoder that pools information (when needed) from the embeddings to produce the final prediction $\hat{y}$. The input visualization shows tracking data from three different sports (basketball, American football, and soccer), demonstrating the architecture's sport-agnostic design. The center of the figure visualizes a single head of self-attention, the key mechanism enabling this approach for multi-agent problems. Each player vector is updated with weighted information from every other player, allowing the model to learn which spatial relationships matter for the prediction task. This attention-based interaction between all players creates rich contextual embeddings without requiring sport-specific feature engineering or player ordering schemes. The same architecture can process tracking data from any team sport, adapting to different numbers of players, field dimensions, and available tracking features, making it a universal solution for sports analytics.}
     \label{fig:transformer_model_arch}
 \end{figure}
 The key advantage of this architecture lies in its self-attention mechanism. As visualized in the center of Figure \ref{fig:transformer_model_arch}, each player vector is updated with information from every other player in a weighted, parameterized manner. The model learns to identify which player interactions are important for the prediction task, creating rich embeddings that capture complex spatial relationships. This end-to-end learning of spatial interactions, without requiring manual feature engineering, is fundamental to the approach and applies broadly across sports tracking modeling tasks.
@@ -190,6 +190,8 @@ This approach addresses the limitations of previous methods in several ways:
     \item The self-attention mechanism allows for learning complex, long-range spatial relationships between players.
     \item The architecture is flexible and can be adapted to various sports and analytical tasks with minimal modifications.
 \end{enumerate}
+
+Importantly, this architecture is inherently sport-agnostic and feature-flexible. As illustrated in Figure \ref{fig:transformer_model_arch}, the same Transformer Player Encoder can process tracking data from basketball, soccer, American football, or any team sport with spatiotemporal player tracking. The model accepts any set of player feature vectors $v_k \in \mathbb{R}^d$, where $d$ can vary based on available features—whether positions, velocities, orientations, player characteristics, or sport-specific attributes. This flexibility allows practitioners to leverage whatever tracking data is available in their domain without architectural modifications. This generalizability is validated by related work successfully applying attention mechanisms to basketball \citep{alcorn2021baller2vec} and soccer \citep{TacticAI}, supporting our belief that Transformer-based approaches represent a unified solution for multi-agent sports modeling.
 \subsection{Prior Equivariant Solutions}
 \label{prior-work-equivariance}
 This paper is not the first to develop general-purpose Deep Learning frameworks over unordered player tracking in sports. Here, we compare several notable approaches to our proposed Transformer-based method: 
@@ -208,7 +210,7 @@ While GNNs offer a natural representation of players on a field, Transformers pr
 \subsubsection{The Zoo}
 \citet{TheZoo2020} is a research group developed a model architecture that won the 2020 NFL Big Data Bowl in Kaggle challenge. This victory, along with the Big Data Bowl's growing prominence, led to The Zoo Architecture (hereafter referred to as Zoo) becoming a de-facto equivariant deep learning approach used by entrants in following competitions. Furthermore, this architecture powers models and stats distributed by the NFL's advanced wing \textit{Next Gen Stats}.
 In their submission, they identified the importance of designing for the player-order equivariance problem but discovered that their custom equivariant Zoo design \textit{outperformed} Transformers with Multi-Head Attention. Zoo, as shown in Figure \ref{fig:Zoo_Model_Architecture}, relies on feature engineering vectors pairwise between each offensive and defensive player, and then operating dense layers over each pairwise vector \textit{independently}, with pooling operations to eventually reduce the dimensionality into one final prediction.
-\begin{figure}[h]
+\begin{figure}[ht]
     \centering
     \includegraphics[width=1\linewidth]{The Zoo Architecture.png}
     \caption{Simplified Structure of The Zoo Architecture that rose to prominence in modeling spatiotemporal NFL tracking data. It was designed to predict a categorical distribution over the number of yards gained on rushing plays using tracking frames at time of handoff. The model relies on manually constructing "interaction" feature vectors pairwise between each offensive and defensive player. The model then essentially treats these "interaction" feature vectors as independent throughout, with no mechanism to learn across player dimension. After applying a few dense layers to each interaction vector, pooling is applied to collect the most salient learned features across the offensive player and then defensive player dimension.}
@@ -311,7 +313,7 @@ Before comparing final model performance, we examine how each architecture respo
 
 We trained 24 models total (12 per architecture) spanning the following hyperparameter space: model dimensions \{32, 128, 512\}, number of layers \{1, 2, 4, 8\}, with fixed learning rate (1e-4), batch size (256), and dropout (0.3). Table \ref{tab:model_scaling_comparison} presents representative configurations from both architectures.
 
-\begin{table}[h]
+\begin{table}[ht]
 	\caption{Representative Model Configurations Showing Scaling Behavior}
 	\centering
 	\begin{tabular}{|l|c|c|c|c|c|}
@@ -340,13 +342,13 @@ The results reveal strikingly different scaling behaviors between the two archit
 
 In contrast, the Transformer shows clear improvements with increased capacity: 4.95 → 4.60 → 4.61 yards as we scale from Small to Medium to Large configurations (127× parameter increase). The best-performing Transformer-Large model trained for 12 epochs before early stopping, demonstrating that it could effectively leverage its increased capacity to achieve superior performance. Only at extreme capacity (Transformer-XLarge at 25.6M parameters, 6 epochs) do we observe slight overfitting.
 
-Critically, Transformer models outperform Zoo even at matched computational budgets. Transformer-Small (52K params, 2.2M FLOPs) achieves 4.95 yards, substantially better than Zoo-Medium (73K params, 8.4M FLOPs) at 5.78 yards. This represents a 14\% improvement with fewer parameters and less computation. This pattern holds across all comparable model sizes, with Transformers consistently achieving 15-23\% better performance at matched FLOP budgets.
+Critically, Transformer models outperform Zoo even at matched computational budgets. Transformer-Small (52K params, 2.2M FLOPs) achieves 4.95 yards, substantially better than Zoo-Medium (73K params, 8.4M FLOPs) at 5.78 yards. This represents a 14.4\% improvement with fewer parameters and less computation. This pattern holds across all comparable model sizes, with Transformers consistently achieving 15-23\% better performance at matched FLOP budgets.
 
 These results demonstrate that the Transformer's advantages stem from fundamental architectural properties, specifically its ability to capture higher-order interactions between all players through self-attention, rather than simply having more parameters.
 
 Figure \ref{fig:model_scaling} visualizes these scaling behaviors, showing how Zoo architecture peaks early and degrades with increased capacity, while Transformer architecture continues to improve with scaling and outperforms Zoo at matched computational budgets.
 
-\begin{figure}[h]
+\begin{figure}[ht]
     \centering
     \includegraphics[width=0.75\linewidth]{../results/model_scaling_plot.png}
     \caption{Model Scaling: Test ADE vs FLOPs. Zoo architecture (orange) peaks at Medium (73K params, 8.4M FLOPs) then degrades with more capacity (5.78 → 5.89 yards), while Transformer architecture (blue) improves with scaling (4.95 → 4.60 → 4.61 yards). The Transformer consistently outperforms Zoo at matched computational budgets (15-23\% better), demonstrating that its advantages stem from fundamental architectural properties rather than simply having more parameters.}
@@ -355,11 +357,13 @@ Figure \ref{fig:model_scaling} visualizes these scaling behaviors, showing how Z
 
 For the detailed performance comparisons that follow, we selected the best-performing model from each architecture irrespective of size: Zoo-Medium (73K params, 5.78 yards) and Transformer-Large (6.6M params, 4.61 yards). While these models differ in capacity by 91× in parameters and 33× in FLOPs, this comparison reflects the optimal version of each architectural approach and deliberately avoids penalizing the Transformer for Zoo's inability to scale.
 
+It is worth noting that for real-time applications, the Transformer-Small (52K params) achieves 4.95 yards error, still 14\% better than the best Zoo model, while using fewer parameters and 74\% less computation. This demonstrates that Transformers can deliver superior performance even under computational constraints.
+
 \subsection{Overall Performance}
 
 Our evaluation on a held-out test set reveals that the Transformer model substantially outperforms Zoo by 20.2\% in Average Displacement Error (ADE), measured in yards. Table \ref{tab:overall_performance_comparison} shows performance across all data splits.
 
-\begin{table}[h]
+\begin{table}[ht]
 	\caption{Overall Performance Comparison Across Data Splits}
 	\centering
 	\begin{tabular}{|c|c|c|c|c|c|}
@@ -378,7 +382,7 @@ Our evaluation on a held-out test set reveals that the Transformer model substan
 
 \subsection{Performance by Event Type}
 
-\begin{table}[h]
+\begin{table}[ht]
 	\caption{Test Set Event-Frame Performance Comparison (Average Displacement Error in Yards)}
 	\centering
 	\resizebox{\textwidth}{!}{%
@@ -418,7 +422,7 @@ This pattern is continued when we analyze performance based on temporal distance
 
 Table \ref{tab:frames_before_tackle_comparison} presents a detailed breakdown of model performance at different temporal distances from the tackle. This analysis reveals how the Transformer's architectural advantages manifest across the progression of each play.
 
-\begin{table}[h]
+\begin{table}[ht]
 	\caption{Test Set Performance by Frames Before Tackle}
 	\centering
 	\resizebox{\textwidth}{!}{%
@@ -483,7 +487,7 @@ Our discussion thus far has focused on previous work that relied on decomposing 
 These studies underscore the utility of Attention mechanisms for modeling sports tracking frames. However, we believe that our paper contributes significantly by providing an easily reproducible approach with a narrower scope, focusing specifically on the application of Transformer-based Attention to static, single-frame sports tracking data.
 
 \subsection{Limitations and Future Directions}
-This work focuses deliberately on a narrow scope to provide a clear, reproducible demonstration of Transformer effectiveness. We evaluated a single task (tackle prediction) in one sport (NFL) using static, single-frame inputs without temporal modeling across frames. While we believe the principles generalize broadly, empirical validation across diverse sports, tasks, and temporal modeling approaches remains valuable future work. We welcome further research to explore these dimensions and extend our findings.
+This work focuses deliberately on a narrow empirical scope to provide a clear, reproducible demonstration of Transformer effectiveness. While our architecture is designed to be both sport-agnostic and feature-flexible—accepting any set of spatiotemporal player features regardless of sport or tracking system—we evaluated it on a single task (tackle prediction) in one sport (NFL) using static, single-frame inputs without temporal modeling across frames. The architectural principles and the success of related attention-based approaches in basketball and soccer strongly suggest broad applicability, but empirical validation across diverse sports, tasks, and temporal modeling approaches remains valuable future work. We welcome further research to explore these dimensions and extend our findings.
 
 \section{Conclusion}
 In summary, the adoption of transformers in sports data modeling promises to address the limitations of existing methodologies by providing a simple, generalized, and scalable framework. Our methodology demonstrates the superior performance of transformer-based models compared to traditional approaches like The Zoo Architecture, highlighting their potential in capturing complex spatial interactions with minimal feature engineering. This paradigm shift could facilitate more robust and flexible analyses, ultimately advancing the field of sports data science.

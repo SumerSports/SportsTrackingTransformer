@@ -48,7 +48,7 @@ This work introduces a transformative approach by applying Transformer architect
 This repository accompanies our research paper:
 - **Full Paper**: [`Attention is All You Need, for Sports Tracking Data.pdf`](./paper/Attention%20is%20All%20You%20Need,%20for%20Sports%20Tracking%20Data.pdf)
 - **LaTeX Source**: [`Attention is All You Need, for Sports Tracking Data.tex`](./paper/Attention%20is%20All%20You%20Need,%20for%20Sports%20Tracking%20Data.tex)
-- **Workshop Slides**: [`Transformers_CMSAC_Workshop_notes.pdf`](./paper/Transformers_CMSAC_Workshop_notes.pdf) - Presented at the Carnegie Mellon Sports Analytics Conference
+- **Workshop Slides**: [`CMSAC Workshop Notes.pdf`](./paper/CMSAC%20Workshop%20Notes.pdf) - Presented at the Carnegie Mellon Sports Analytics Conference
 
 ---
 
@@ -223,7 +223,7 @@ sports-tracking-transformer/
 ├── paper/                        # Research paper and materials
 │   ├── Attention is All You Need, for Sports Tracking Data.pdf
 │   ├── Attention is All You Need, for Sports Tracking Data.tex
-│   ├── Transformers_CMSAC_Workshop_notes.pdf
+│   ├── CMSAC Workshop Notes.pdf
 │   └── Sumer Sports Transformer Simple Arch.jpg
 ├── results/                      # Pre-computed results
 │   ├── results.csv                # Performance metrics
