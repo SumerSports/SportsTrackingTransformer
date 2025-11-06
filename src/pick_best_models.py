@@ -1,16 +1,32 @@
 """
 Best Model Selection Module for NFL Big Data Bowl 2024
 
-This module selects the best performing models from training runs and copies
-them to a designated directory. It identifies the best models based on validation
-loss and handles the organization of model checkpoints and results.
+This module automates the selection of optimal models from hyperparameter search results.
+After training multiple model configurations (e.g., 12 Transformer and 12 Zoo models),
+this script identifies the best-performing checkpoint for each architecture based on
+validation loss and consolidates them for easy access.
+
+The selection process:
+1. Scans all model directories under models/{transformer,zoo}/
+2. Examines checkpoint filenames to extract validation loss (e.g., epoch=10-val_loss=2.543.ckpt)
+3. Selects the checkpoint with lowest validation loss for each architecture
+4. Copies best checkpoints and their associated prediction results to models/best_models/
+
+This enables fair comparison between architectures by using each one's optimal configuration,
+acknowledging that different architectures may have different optimal hyperparameters.
 
 Functions:
     find_best_checkpoint: Locate the best checkpoint for each model type
     main: Main execution function for selecting and copying best models
 
-Classes:
-    None
+Output Structure:
+    models/best_models/
+    ├── transformer/
+    │   ├── best_model.ckpt          # Best Transformer checkpoint
+    │   └── best_model_results.parquet  # Predictions from this model
+    └── zoo/
+        ├── best_model.ckpt          # Best Zoo checkpoint
+        └── best_model_results.parquet  # Predictions from this model
 """
 
 from argparse import ArgumentParser

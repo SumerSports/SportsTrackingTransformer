@@ -129,13 +129,22 @@ def predict_model_as_df(model: LitModel = None, ckpt_path: Path = None, devices=
 
 def get_epoch_val_loss_from_ckpt(ckpt_path: Path) -> tuple[int, float]:
     """
-    Get the epoch and validation loss from a checkpoint path.
+    Extract epoch number and validation loss from checkpoint filename.
+
+    Parses checkpoint filenames that follow the pattern 'epoch={N}-val_loss={X.XXX}.ckpt'
+    to extract training metadata for resuming or comparison.
 
     Args:
-        ckpt_path (Path): Path to the checkpoint.
+        ckpt_path (Path): Path to the checkpoint file.
 
     Returns:
-        tuple[int, float]: Epoch and validation loss.
+        tuple[int, float]: A tuple containing:
+            - epoch (int): The epoch number when checkpoint was saved (-1 if not found)
+            - val_loss (float): The validation loss value (inf if not found)
+
+    Example:
+        >>> get_epoch_val_loss_from_ckpt(Path("epoch=10-val_loss=2.543.ckpt"))
+        (10, 2.543)
     """
     ckpt_path = Path(ckpt_path)
 
@@ -167,18 +176,31 @@ def train_model(
     """
     Train a single model with specified hyperparameters.
 
+    This function handles the complete training pipeline including:
+    - Checkpoint resumption from previous runs
+    - Model initialization with hyperparameters
+    - Dataset loading and dataloader creation
+    - Training with early stopping and model checkpointing
+    - Prediction generation and saving for the best model
+
     Args:
         model_type (str): Type of model to train ('transformer' or 'zoo').
-        batch_size (int): Batch size for training.
-        model_dim (int): Dimension of the model's internal representations.
-        num_layers (int): Number of layers in the model.
-        learning_rate (float): Learning rate for optimization.
-        dropout (float): Dropout rate for regularization.
-        device (int, optional): GPU device to use. Defaults to 0.
-        dbg_run (bool, optional): Whether to run in debug mode. Defaults to False.
+        batch_size (int): Batch size for training (typically 256).
+        model_dim (int): Dimension of the model's internal representations (32, 128, or 512).
+        num_layers (int): Number of layers in the model (1, 2, 4, or 8).
+        learning_rate (float): Learning rate for AdamW optimizer (typically 1e-4).
+        dropout (float): Dropout rate for regularization (typically 0.3).
+        device (int, optional): GPU device index to use (-1 for CPU). Defaults to 0.
+        dbg_run (bool, optional): Whether to run in debug mode with profiling. Defaults to False.
+        skip_existing (bool, optional): Skip training if checkpoint exists. Defaults to False.
+        patience (int, optional): Early stopping patience in epochs. Defaults to 5.
 
     Returns:
-        LitModel: Trained model instance.
+        LitModel: Trained model instance with best validation performance.
+
+    Note:
+        Training automatically resumes from the best checkpoint if one exists,
+        unless skip_existing=True in which case training is skipped entirely.
     """
     # Set up logger and trainer for full run
     logger = TensorBoardLogger(
@@ -220,11 +242,14 @@ def train_model(
         print(f"Skipping training as checkpoint exists: {existing_ckpt}")
         return lit_model
 
-    # Load datasets
+    # Load preprocessed datasets specific to model type
+    # Zoo and Transformer models require different feature formats
     train_ds: BDB2024_Dataset = load_datasets(model_type, split="train")
     val_ds: BDB2024_Dataset = load_datasets(model_type, split="val")
 
-    # Create dataloaders
+    # Create dataloaders with optimized settings
+    # Training: smaller batch size, shuffled for better generalization
+    # Validation: larger batch size (1024), no shuffle for consistent evaluation
     train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=30)
     val_dataloader = DataLoader(val_ds, batch_size=1024, shuffle=False, pin_memory=True, num_workers=30)
 

@@ -1,17 +1,29 @@
 """
 Dataset Module for NFL Big Data Bowl 2024
 
-This module defines the BDB2024_Dataset class, which is used to load and preprocess
-data for training machine learning models. It includes functionality for both
-'transformer' and 'zoo' model types.
+This module handles data loading and preprocessing for tackle prediction models.
+It implements two distinct feature engineering approaches:
+
+1. Transformer Model: Minimal feature engineering, providing raw player features
+   to leverage self-attention for learning spatial relationships end-to-end.
+
+2. Zoo Model: Complex pairwise feature engineering creating a 10x11 grid of
+   offensive-defensive player interactions, following the architecture that won
+   the 2020 NFL Big Data Bowl.
+
+The key insight is that Transformer models can learn these interaction patterns
+automatically, while Zoo models require manual feature engineering.
 
 Classes:
-    BDB2024_Dataset: Custom dataset class for NFL tracking data
+    BDB2024_Dataset: Custom PyTorch dataset class for NFL tracking data
 
 Functions:
-    load_datasets: Load preprocessed datasets for a specific model type and data split
-    main: Main execution function for creating and saving datasets
+    load_datasets: Load preprocessed datasets from disk
+    main: Precompute and cache datasets for all splits and model types
 
+Usage:
+    dataset = load_datasets('transformer', 'train')
+    features, targets = dataset[0]  # Get first sample
 """
 
 import multiprocessing as mp

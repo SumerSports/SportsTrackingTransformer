@@ -1,9 +1,28 @@
 """
 Data Preparation Module for NFL Big Data Bowl 2024
 
-This module processes raw NFL tracking data to prepare it for machine learning models.
-It includes functions for loading, cleaning, and transforming the data, as well as
-splitting it into train, validation, and test sets.
+This module implements the complete data preprocessing pipeline for tackle prediction.
+The pipeline transforms raw NFL tracking data (player positions, velocities, orientations)
+into ML-ready features while handling several key challenges:
+
+1. Coordinate System Normalization: Converts polar coordinates (speed, direction) to
+   Cartesian (vx, vy) for easier neural network processing.
+
+2. Play Direction Standardization: Ensures all plays have offense moving to the right,
+   creating consistent spatial patterns for the model to learn.
+
+3. Data Augmentation: Mirrors plays across the y-axis to double training data and
+   improve model generalization to both sides of the field.
+
+4. Relative Positioning: Converts absolute field positions to positions relative to
+   the ball carrier, helping models learn spatial relationships independent of field location.
+
+5. Train/Val/Test Split: Performs play-level splitting (not frame-level) to prevent
+   data leakage between splits, ensuring honest model evaluation.
+
+Pipeline Flow:
+    Raw CSV Data -> Feature Engineering -> Standardization -> Augmentation ->
+    Train/Val/Test Split -> Saved Parquet Files
 
 Functions:
     get_players_df: Load and preprocess player data
@@ -18,6 +37,10 @@ Functions:
     split_train_test_val: Split data into train, validation, and test sets
     main: Main execution function
 
+Output:
+    Creates 6 files in data/split_prepped_data/:
+    - {train,val,test}_features.parquet: Input features for models
+    - {train,val,test}_targets.parquet: Tackle location labels
 """
 
 from pathlib import Path

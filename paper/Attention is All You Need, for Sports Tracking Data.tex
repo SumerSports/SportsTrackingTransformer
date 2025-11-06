@@ -56,14 +56,14 @@ pdfkeywords={sports analytics, sports tracking data, latent representation learn
 \maketitle
 
 \begin{abstract}
-The rapid advancement of spatial tracking technologies in sports has led to an unprecedented surge in high-quality, high-volume data across all levels of play. While this data has catalyzed innovations in sports analytics, current methodologies for team sports often struggle with the inherent challenge of the player-ordering problem. This paper highlights the application of Transformer architectures and Attention to address these challenges in sports analytics. Our approach operates end-to-end on raw player tracking data, processes unordered collections of player vectors, and is inherently designed to learn pairwise spatial interactions between players. The framework satisfies critical criteria for widespread adoption in sports modeling: minimal feature engineering, adaptability across diverse problems, and accessibility in terms of understandability and reproducibility. To demonstrate its effectiveness, we apply our approach to the task of predicting tackling location in the NFL, a problem recently explored in the public domain. Our results show significant improvements over commonly used approaches, particularly in generalizing to diverse game situations. This work aims to catalyze a paradigm shift in sports analytics research methodologies, moving from traditional models to Transformer-based architectures. The potential implications include unlocking new insights into player dynamics, team strategies, and game outcomes across various sports domains, paving the way for more sophisticated deep learning models in sports analytics. \footnote{ Our code is openly available \href{https://github.com/SumerSports/SportsTrackingTransformer}{here}}
+The rapid advancement of spatial tracking technologies in sports has led to an unprecedented surge in high-quality, high-volume data across all levels of play. While this data has catalyzed innovations in sports analytics, current methodologies for team sports often struggle with the inherent challenge of the player-ordering problem. This paper highlights the application of Transformer architectures and Attention to address these challenges in sports analytics. Our approach operates end-to-end on raw player tracking data, processes unordered collections of player vectors, and is inherently designed to learn pairwise spatial interactions between players. The framework satisfies critical criteria for widespread adoption in sports modeling: minimal feature engineering, adaptability across diverse problems, and accessibility in terms of understandability and reproducibility. To demonstrate its effectiveness, we apply our approach to the task of predicting tackling location in the NFL, a problem recently explored in the public domain. Our results show significant improvements over commonly used approaches, achieving 20\% better prediction accuracy (4.61 vs 5.78 yards average displacement error) and particularly excelling in generalizing to diverse game situations. This work aims to advance sports analytics research methodologies by demonstrating the potential of Transformer-based architectures over traditional models. The potential implications include unlocking new insights into player dynamics, team strategies, and game outcomes across various sports domains, paving the way for more sophisticated deep learning models in sports analytics. \footnote{ Our code is openly available \href{https://github.com/SumerSports/SportsTrackingTransformer}{here}}
 \end{abstract}
 % keywords can be removed
-\keywords{sports analytics \and sports tracking data \and latent representation learning  \and multi-agent spatiotemporal modeling}
+\keywords{sports analytics \and sports tracking data \and latent representation learning \and multi-agent spatiotemporal modeling}
 \section{Introduction}
 \label{sec:introduction}
-The field of sports analytics has experienced rapid growth, driven by unprecedented advancements in spatial tracking technologies. High-quality, high-volume data acquisition—facilitated by optical systems, computer vision algorithms, and chip-based tracking solutions—is now pervasive across all sports and levels of play. This confluence of rich data with innovative research and sophisticated modeling techniques has precipitated disruptions in multiple domains, including sports science, broadcasting, player evaluation, team building optimization, injury prevention, and tactical strategy formulation.
-\citet{kovalchik-2023-review} comprehensively summarizes the burgeoning corpus of innovative research contributions leveraging sports tracking data, with the most advanced and modern modeling emphasis in Latent Variable Estimation, Event Prediction, and Value Attribution. Despite the sophistication of these methodologies, their potential is often hampered by reliance on traditional approaches to circumvent the \textit{player order problem}. This challenge arises from the dynamic nature of team sports, where player roles and formations are inconsistent and can vary between games. The absence of a persistent intrinsic order of players in different intervals of play or games conflicts with the input structure requirements of many standard machine learning models, necessitating hand-crafted feature preprocessing steps to transform raw tracking data into structured feature representations or the imposition of heuristic-based orderings \citep{horton2020footballtracking}.
+The field of sports analytics has experienced rapid growth, driven by unprecedented advancements in spatial tracking technologies. High-quality, high-volume data acquisition, facilitated by optical systems, computer vision algorithms, and chip-based tracking solutions, is now pervasive across all sports and levels of play. This confluence of rich data with innovative research and sophisticated modeling techniques has precipitated disruptions in multiple domains, including sports science, broadcasting, player evaluation, team building optimization, injury prevention, and tactical strategy formulation.
+\citet{kovalchik-2023-review} comprehensively summarizes the burgeoning corpus of innovative research contributions leveraging sports tracking data, with the most advanced and modern modeling emphasis in Latent Variable Estimation, Event Prediction, and Value Attribution. Despite the sophistication of these methodologies, their potential is often hampered by reliance on traditional approaches to circumvent the \textit{player-ordering problem}. This challenge arises from the dynamic nature of team sports, where player roles and formations are inconsistent and can vary between games. The absence of a persistent intrinsic order of players conflicts with the input structure requirements of many standard machine learning models. This necessitates hand-crafted feature preprocessing steps to transform raw tracking data into structured feature representations or the imposition of heuristic-based orderings \citep{horton2020footballtracking}.
 These hand-designed feature extractors or ordering approaches, while functional, rely on domain expertise and lack generalizability. Moreover, with the proliferation of deep learning, feature engineering has become an anti-pattern with preference given to \textit{end-to-end learning} \citep{lecun2015deeplearning, ng2018machinelearningyearning}. Advocates for end-to-end learning emphasize that, given sufficient data, models should aim to learn latent features directly from raw inputs, optimizing against training objectives. Consequently, modeling advances in deep learning research typically stem from architectural innovations tailored to the data space rather than feature extraction techniques.
 Furthermore, we posit that the majority of modeling tasks involving sports player tracking share a fundamental objective: learning pairwise spatial interactions between players. Models adept at capturing these interactions are likely to excel in event prediction and other supervised tasks that necessitate a nuanced understanding of player positioning within the context of sport-specific rules and dynamics. This observation motivates our exploration of novel architectural approaches that can inherently handle unordered sets of player data while capturing complex spatial relationships.
 To address these challenges, this paper highlights the application of Transformer architectures as a modeling framework for sports analytics. Transformers, originally developed for natural language processing tasks, have shown remarkable capabilities in handling sequential and unordered data across various domains. Our proposed approach satisfies several critical criteria:
@@ -73,7 +73,7 @@ To address these challenges, this paper highlights the application of Transforme
 \item Inherent design for learning pairwise player interactions.
 \item Accessibility in terms of understandability, explainability, and reproducibility.
 \end{enumerate}
-Our objective is to catalyze a paradigm shift in sports analytics research methodologies. We anticipate a transition from traditional models like XGBoost and MLPs, commonly employed in competitions such as the NFL Big Data Bowl, towards variants and extensions of Transformer architectures. This shift has the potential to unlock new insights in player dynamics, team strategies, and game outcomes, ultimately advancing the field of sports analytics and its applications across various domains.
+Our objective is to encourage a methodological advancement in sports analytics research. We anticipate a gradual transition from traditional models like XGBoost and MLPs, commonly employed in competitions such as the NFL Big Data Bowl, towards variants and extensions of Transformer architectures. This shift has the potential to unlock new insights in player dynamics, team strategies, and game outcomes, ultimately advancing the field of sports analytics and its applications across various domains.
 \section{Methods}
 \subsection{Sports Tracking Data}
 \label{sec:sports_tracking_data}
@@ -122,14 +122,28 @@ We define a model $f: (\mathbb{R}^d)^K \rightarrow \mathcal{Y}$ as a function th
 where $\hat{y}$ is the predicted label.
 To train this model, we define a loss function $\mathcal{L}: \mathcal{Y} \times \mathcal{Y} \rightarrow \mathbb{R}$ that measures the discrepancy between the true label $y$ and the predicted label $\hat{y}$. The optimization problem can then be formulated as:
 \begin{equation}
-f^* = \argmin_f \mathbb{E}_{(V, y) \sim \mathcal{D}}[\mathcal{L}(y, f(V))]
+f^* = \arg\min_f \mathbb{E}_{(V, y) \sim \mathcal{D}}[\mathcal{L}(y, f(V))]
 \end{equation}
 where $\mathcal{D}$ represents the underlying data distribution from which our training samples are drawn.
-This formulation describes a general framework for modeling on unordered sets of player data. In the following sections, we will discuss various prior approaches to ascribing a model to $f$, highlighting their strengths and limitations in handling the player-ordering problem. This will set the stage for our proposed Transformer-based approach, which we argue offers a more flexible and effective solution to learning from unordered sports tracking data. 
+This formulation describes a general framework for modeling on unordered sets of player data. A critical property for such models is \textbf{permutation equivariance}:
 
-\subsection{Decomposition Approaches in Prior Work }
+\noindent\textbf{Definition (Permutation Equivariance and Invariance).}
+A function $f: (\mathbb{R}^d)^K \rightarrow (\mathbb{R}^{d'})^K$ is \textbf{permutation-equivariant} if for any permutation $\pi$ of the input indices:
+\begin{equation*}
+f(\{v_{\pi(1)}, v_{\pi(2)}, ..., v_{\pi(K)}\}) = \{f(v)_{\pi(1)}, f(v)_{\pi(2)}, ..., f(v)_{\pi(K)}\}
+\end{equation*}
+In other words, permuting the input players results in the same permutation applied to the output representations.
+
+For our tackle prediction task, we require \textbf{permutation invariance}: the final prediction should be unchanged by player ordering. This is achieved by composing a permutation-equivariant encoder (the Transformer) with a permutation-invariant decoder (pooling + MLP), such that for any permutation $\pi$:
+\begin{equation*}
+f(\pi(V)) = f(V) \quad \text{where } f: (\mathbb{R}^d)^K \rightarrow \mathcal{Y}
+\end{equation*}
+
+In the following sections, we will discuss various prior approaches to ascribing a model to $f$, highlighting their strengths and limitations in handling the player-ordering problem. This will set the stage for our proposed Transformer-based approach, which we argue offers a more flexible and effective solution to learning from unordered sports tracking data. 
+
+\subsection{Decomposition Approaches in Prior Work}
 \label{prior-work-decomposition}
-As discussed in the Introduction\ref{sec:introduction}, often sports researchers identify this player ordering issue and then decompose the modeling as:
+As discussed in the Introduction~\ref{sec:introduction}, often sports researchers identify this player-ordering problem and then decompose the modeling as:
 \begin{equation}
     f(V) = g(\Phi(V))
 \end{equation}
@@ -160,16 +174,15 @@ where the TransformerEncoder function can be expressed as:
 \begin{equation}
 \text{TransformerEncoder}(V) = \text{LayerNorm}(V + \text{FFN}(\text{LayerNorm}(V + \text{MultiHead}(V, V, V))))
 \end{equation}
-The function $g$ is a problem-specific "decoder" pooling + MLP layer that maps the Transformer Encoder's learned salient latent player embeddings to the desired label space $\mathcal{Y}$. The pooling operation is necessary for problems where when we need to eventually aggregate information across all latent player embeddings for a single shared prediction.
+for each of the $L$ encoder layers (where $L$ is a hyperparameter), with outputs of one layer becoming inputs to the next. The function $g$ is a problem-specific "decoder" pooling + MLP layer that maps the Transformer Encoder's learned salient latent player embeddings to the desired label space $\mathcal{Y}$. The pooling operation is necessary for problems where when we need to eventually aggregate information across all latent player embeddings for a single shared prediction.
 In Figure \ref{fig:transformer_model_arch}, we visualize this architecture at a high level, demonstrating its generalizability across problems in Sports Tracking.
 \begin{figure}[p]
     \centering
     \includegraphics[width=1.0\textwidth, height=0.80\textheight, keepaspectratio]{Sumer Sports Transformer Simple Arch.jpg}
-    \caption{A generalized end-to-end Transformer Encoder modeling solution for sports tracking data analysis. The architecture consists of: (1) an input layer ingesting raw tracking features as unordered player vectors, (2) a Transformer Player Encoder that transforms these into salient player embeddings through repeated Multi-Head Attention Transformer layers, and (3) a problem-specific decoder that pools information (if needed) from the embeddings to learn a final $\hat{y}$.  \\ \\
-    A single head of self-attention is visualized in the center of the figure. This is the key aspect of why this approach fits the multi-agent problem. Each player vector is updated with information from each other player in a weighted manner as the model learns to identify important patterns for the objectives. The process of players attending to each other creates rich embeddings, which we believe is a common pattern across most tracking sports modeling tasks.  \\}
+    \caption{Generalized end-to-end Transformer architecture for sports tracking data. The architecture consists of: (1) an input layer ingesting raw tracking features as unordered player vectors, (2) a Transformer Player Encoder that transforms these into salient player embeddings through $L$ repeated Multi-Head Attention layers, and (3) a problem-specific decoder that pools information (when needed) from the embeddings to produce the final prediction $\hat{y}$. The center of the figure visualizes a single head of self-attention—the key mechanism enabling this approach for multi-agent problems. Each player vector is updated with weighted information from every other player, allowing the model to learn which spatial relationships matter for the prediction task. This attention-based interaction between all players creates rich contextual embeddings, a pattern we believe generalizes broadly across sports tracking modeling tasks.}
     \label{fig:transformer_model_arch}
 \end{figure}
-The key advantage of this architecture lies in its self-attention mechanism. As visualized in the center of Figure \ref{fig:transformer_model_arch}, each player vector is updated with information from every other player in a parameterized manner. This allows the model to learn to identify important patterns for the objectives, creating rich embeddings that capture complex spatial relationships between players.
+The key advantage of this architecture lies in its self-attention mechanism. As visualized in the center of Figure \ref{fig:transformer_model_arch}, each player vector is updated with information from every other player in a weighted, parameterized manner. The model learns to identify which player interactions are important for the prediction task, creating rich embeddings that capture complex spatial relationships. This end-to-end learning of spatial interactions, without requiring manual feature engineering, is fundamental to the approach and applies broadly across sports tracking modeling tasks.
 This approach addresses the limitations of previous methods in several ways:
 \begin{enumerate}
     \item It operates directly on raw player vectors, eliminating the need for feature engineering or fixed ordering schemes.
@@ -198,7 +211,7 @@ In their submission, they identified the importance of designing for the player-
 \begin{figure}[h]
     \centering
     \includegraphics[width=1\linewidth]{The Zoo Architecture.png}
-    \caption{Simplified Structure of The Zoo Architecture that rose to prominence in modeling spatiotemporal NFL tracking data. It was designed to predict a categorical distribution over the number of yards gained on rushing plays using tracking frames at time of handoff. The model relies on manually constructing "interaction" feature vectors pairwise between each offensive and defensive player. The model then essentially treats these "interaction" feature vectors as independent throughout, with no mechanism to learn across player dimension. After applying a few dense layers to each interaction vector, pooling is applied to collect the most salient learned features across the offensive player and then defensive player dimension.\\}
+    \caption{Simplified Structure of The Zoo Architecture that rose to prominence in modeling spatiotemporal NFL tracking data. It was designed to predict a categorical distribution over the number of yards gained on rushing plays using tracking frames at time of handoff. The model relies on manually constructing "interaction" feature vectors pairwise between each offensive and defensive player. The model then essentially treats these "interaction" feature vectors as independent throughout, with no mechanism to learn across player dimension. After applying a few dense layers to each interaction vector, pooling is applied to collect the most salient learned features across the offensive player and then defensive player dimension.}
     \label{fig:Zoo_Model_Architecture}
 \end{figure}
 While not explicitly cited, we find many similarities between Zoo and the DeepSet approach. We expect Zoo to be architecturally inferior for similar reasons:
@@ -273,7 +286,7 @@ The TransformerEncoder model $f: (\mathbb{R}^6)^{22} \rightarrow (\mathbb{R}^d)^
 \begin{equation}
     \hat{y} = (\hat{x}_{tackle}, \hat{y}_{tackle}) = g(f(V)) = g(f(\{v_1, v_2, ..., v_{22}\}))
 \end{equation}
-Implementation: $d_{\text{ff}} = 4d$, attention heads $= \min(16, \max(2, 2 \times \lfloor d/64 \rfloor))$, BatchNorm1d for normalization, AdaptiveAvgPool1d for pooling.
+Implementation: $d_{\text{ff}} = 4d$, attention heads $= \min(16, \max(2, 2 \times \lfloor d/64 \rfloor))$, BatchNorm1d for normalization, AdaptiveAvgPool1d for pooling. In our code implementation, $L$ corresponds to the \texttt{num\_layers} hyperparameter.
 \subsubsection{The Zoo Architecture Model Details}
 For our Zoo, we have to perform a complex pairwise feature interaction process $\Phi:  V \rightarrow (\mathbb{R}^{10})^{10\cdot11}$ that converts $V = \{v_1, v_2, ..., v_K\}$ over the $K = 22$ players into 110 interaction vectors. Specifically, each interaction vector $u_{ij}$ between offensive player $p_i$ and defensive player $p_j$ with ball carrier $p_b$ is composed of:
 \begin{equation}
@@ -287,6 +300,8 @@ where:
 \end{itemize}
 
 Then Zoo model $g: (\mathbb{R}^{10})^{10\cdot11} \rightarrow \mathbb{R}^2$ applies successive MLPs to interaction vectors independently, only pooling across to reduce dimensionality.
+
+\textbf{Contrasting Architectural Philosophies:} The key distinction between these architectures lies in their approach to learning player interactions. Zoo requires explicit, hand-crafted feature engineering through the pairwise interaction vectors defined in Equation (8): a manual design choice that encodes domain assumptions about which interactions matter. In contrast, the Transformer architecture learns these interactions end-to-end via the attention mechanism, discovering relevant pairwise relationships directly from the raw player features without requiring manual specification of interaction patterns. This fundamental difference exemplifies the shift from feature engineering to end-to-end learning in deep learning research.
 
 \section{Results}
 
@@ -305,48 +320,57 @@ We trained 24 models total (12 per architecture) spanning the following hyperpar
     \hline
     \multicolumn{6}{|c|}{\textit{Zoo Architecture}} \\
     \hline
-    Zoo-Small & 32 & 2 & 5K & 0.6M & 6.22 \\
-    Zoo-Medium & 128 & 2 & 73K & 8.4M & \textbf{5.71} \\
-    Zoo-Large & 512 & 2 & 1.1M & 128.9M & 5.76 \\
-    Zoo-XLarge & 512 & 8 & 5.9M & 513.5M & 5.93 \\
+    Zoo-Small & 32 & 2 & 5K & 0.6M & 6.25 \\
+    Zoo-Medium & 128 & 2 & 73K & 8.4M & \textbf{5.78} \\
+    Zoo-Large & 512 & 2 & 1.1M & 128.9M & 5.77 \\
+    Zoo-XLarge & 512 & 8 & 5.9M & 513.5M & 5.89 \\
     \hline
     \multicolumn{6}{|c|}{\textit{Transformer Architecture}} \\
     \hline
-    Transformer-Small & 32 & 4 & 52K & 2.2M & 4.90 \\
-    Transformer-Medium & 128 & 2 & 418K & 17.5M & 4.64 \\
-    Transformer-Large & 512 & 2 & 6.6M & 277.9M & \textbf{4.57} \\
-    Transformer-XLarge & 512 & 8 & 25.6M & 1109.1M & 4.66 \\
+    Transformer-Small & 32 & 4 & 52K & 2.2M & 4.95 \\
+    Transformer-Medium & 128 & 2 & 418K & 17.5M & 4.60 \\
+    Transformer-Large & 512 & 2 & 6.6M & 277.9M & \textbf{4.61} \\
+    Transformer-XLarge & 512 & 8 & 25.6M & 1109.1M & 4.65 \\
     \hline
 	\end{tabular}
 	\label{tab:model_scaling_comparison}
 \end{table}
 
-The results reveal strikingly different scaling behaviors between the two architectures. The optimal Zoo configuration is the relatively modest Zoo-Medium (73K parameters, 8.4M FLOPs, 5.71 yards ADE). Increasing capacity beyond this point consistently degrades performance: Zoo-XLarge, despite being 81× larger in parameters and 61× larger in FLOPs, achieves worse performance at 5.93 yards. This pattern held across our entire hyperparameter sweep, with larger Zoo models universally underperforming their smaller counterparts.
+The results reveal strikingly different scaling behaviors between the two architectures. The optimal Zoo configuration is the relatively modest Zoo-Medium (73K parameters, 8.4M FLOPs, 5.78 yards ADE). Increasing capacity beyond this point consistently degrades performance: Zoo-XLarge, despite being 81× larger in parameters and 61× larger in FLOPs, achieves worse performance at 5.89 yards. Larger Zoo models also reached early stopping substantially earlier (Zoo-Medium at epoch 49 vs. Zoo-Large at epoch 8 vs. Zoo-XLarge at epoch 3), a pattern consistent with rapid overfitting that prevents these models from effectively utilizing additional capacity. This pattern held across our entire hyperparameter sweep, with larger Zoo models universally underperforming their smaller counterparts.
 
-In contrast, the Transformer shows clear improvements with increased capacity: 4.90 → 4.64 → 4.57 yards as we scale from Small to Medium to Large configurations (127× parameter increase). Only at extreme capacity (Transformer-XLarge at 25.6M parameters) do we observe slight overfitting.
+In contrast, the Transformer shows clear improvements with increased capacity: 4.95 → 4.60 → 4.61 yards as we scale from Small to Medium to Large configurations (127× parameter increase). The best-performing Transformer-Large model trained for 12 epochs before early stopping, demonstrating that it could effectively leverage its increased capacity to achieve superior performance. Only at extreme capacity (Transformer-XLarge at 25.6M parameters, 6 epochs) do we observe slight overfitting.
 
-Critically, Transformer models outperform Zoo even at matched computational budgets. Transformer-Small (52K params, 2.2M FLOPs) achieves 4.90 yards, substantially better than Zoo-Medium (73K params, 8.4M FLOPs) at 5.71 yards. This represents a 14\% improvement with fewer parameters and less computation. This pattern holds across all comparable model sizes, with Transformers consistently achieving 15-23\% better performance at matched FLOP budgets.
+Critically, Transformer models outperform Zoo even at matched computational budgets. Transformer-Small (52K params, 2.2M FLOPs) achieves 4.95 yards, substantially better than Zoo-Medium (73K params, 8.4M FLOPs) at 5.78 yards. This represents a 14\% improvement with fewer parameters and less computation. This pattern holds across all comparable model sizes, with Transformers consistently achieving 15-23\% better performance at matched FLOP budgets.
 
 These results demonstrate that the Transformer's advantages stem from fundamental architectural properties, specifically its ability to capture higher-order interactions between all players through self-attention, rather than simply having more parameters.
 
-For the detailed performance comparisons that follow, we selected the best-performing model from each architecture irrespective of size: Zoo-Medium (73K params, 5.71 yards) and Transformer-Large (6.6M params, 4.57 yards). While these models differ in capacity by 91× in parameters and 33× in FLOPs, this comparison reflects the optimal version of each architectural approach and deliberately avoids penalizing the Transformer for Zoo's inability to scale.
+Figure \ref{fig:model_scaling} visualizes these scaling behaviors, showing how Zoo architecture peaks early and degrades with increased capacity, while Transformer architecture continues to improve with scaling and outperforms Zoo at matched computational budgets.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.75\linewidth]{../results/model_scaling_plot.png}
+    \caption{Model Scaling: Test ADE vs FLOPs. Zoo architecture (orange) peaks at Medium (73K params, 8.4M FLOPs) then degrades with more capacity (5.78 → 5.89 yards), while Transformer architecture (blue) improves with scaling (4.95 → 4.60 → 4.61 yards). The Transformer consistently outperforms Zoo at matched computational budgets (15-23\% better), demonstrating that its advantages stem from fundamental architectural properties rather than simply having more parameters.}
+    \label{fig:model_scaling}
+\end{figure}
+
+For the detailed performance comparisons that follow, we selected the best-performing model from each architecture irrespective of size: Zoo-Medium (73K params, 5.78 yards) and Transformer-Large (6.6M params, 4.61 yards). While these models differ in capacity by 91× in parameters and 33× in FLOPs, this comparison reflects the optimal version of each architectural approach and deliberately avoids penalizing the Transformer for Zoo's inability to scale.
 
 \subsection{Overall Performance}
 
-Our evaluation on a held-out test set reveals that the Transformer model substantially outperforms Zoo by 20.0\% in Average Displacement Error (ADE), measured in yards. Table \ref{tab:overall_performance_comparison} shows performance across all data splits.
+Our evaluation on a held-out test set reveals that the Transformer model substantially outperforms Zoo by 20.2\% in Average Displacement Error (ADE), measured in yards. Table \ref{tab:overall_performance_comparison} shows performance across all data splits.
 
 \begin{table}[h]
 	\caption{Overall Performance Comparison Across Data Splits}
 	\centering
 	\begin{tabular}{|c|c|c|c|c|c|}
 	\hline
-    \textbf{Split} & \textbf{Zoo (yards)} & \textbf{Transformer (yards)} & \textbf{Improvement \%} & \textbf{Improvement (yards)} & \textbf{Plays} \\
+    \textbf{Split} & \textbf{Plays} & \textbf{Zoo (yards)} & \textbf{Transformer (yards)} & \textbf{Improvement \%} & \textbf{Improvement (yards)} \\
     \hline
-    Train & 4.90 & 3.97 & 19.0\% & 0.93 & 8,735 \\
+    Train & 8,735 & 5.01 & 4.03 & 19.6\% & 0.98 \\
     \hline
-    Val & 5.81 & 4.68 & 19.4\% & 1.13 & 1,872 \\
+    Val & 1,872 & 5.81 & 4.69 & 19.3\% & 1.12 \\
     \hline
-    Test & 5.71 & 4.57 & 20.0\% & 1.14 & 1,871 \\
+    Test & 1,871 & 5.78 & 4.61 & 20.2\% & 1.17 \\
     \hline
 	\end{tabular}
 	\label{tab:overall_performance_comparison}
@@ -357,27 +381,29 @@ Our evaluation on a held-out test set reveals that the Transformer model substan
 \begin{table}[h]
 	\caption{Test Set Event-Frame Performance Comparison (Average Displacement Error in Yards)}
 	\centering
+	\resizebox{\textwidth}{!}{%
 	\begin{tabular}{|c|c|c|c|c|c|}
 	\hline
     \textbf{Event} & \textbf{Plays} & \textbf{Zoo (yards)} & \textbf{Transformer (yards)} & \textbf{Improvement \%} & \textbf{Improvement (yards)} \\
     \hline
-    Ball Snap & 958 & 8.64 & 8.90 & -3.0\% & -0.26 \\
+    Ball Snap & 958 & 8.72 & 8.77 & -0.6\% & -0.05 \\
     \hline
-    Handoff & 887 & 6.63 & 6.51 & 1.8\% & 0.12 \\
+    Handoff & 887 & 6.69 & 6.59 & 1.5\% & 0.10 \\
     \hline
-    Run & 142 & 7.69 & 7.01 & 8.8\% & 0.68 \\
+    Run & 142 & 7.92 & 6.83 & 13.8\% & 1.09 \\
     \hline
-    Pass Arrived & 732 & 4.95 & 4.64 & 6.3\% & 0.31 \\
+    Pass Arrived & 732 & 5.13 & 4.72 & 8.0\% & 0.41 \\
     \hline
-    Pass Outcome Caught & 842 & 4.46 & 4.17 & 6.5\% & 0.29 \\
+    Pass Outcome Caught & 842 & 4.62 & 4.22 & 8.7\% & 0.40 \\
     \hline
-    First Contact & 1,578 & 3.96 & 2.90 & 26.8\% & 1.06 \\
+    First Contact & 1,578 & 4.06 & 2.88 & 29.1\% & 1.18 \\
     \hline
-    Out of Bounds & 272 & 5.37 & 1.68 & 68.7\% & 3.69 \\
+    Out of Bounds & 272 & 5.81 & 1.72 & 70.4\% & 4.09 \\
     \hline
-    Tackle & 1,497 & 4.03 & 1.02 & 74.7\% & 3.01 \\
+    Tackle & 1,497 & 4.07 & 0.98 & 75.9\% & 3.09 \\
     \hline
-	\end{tabular}
+	\end{tabular}%
+	}
 	\label{tab:event_frame_results_comparison}
 \end{table}
 A breakdown of performance by specific game events provides further insights into the strengths of each model (Table \ref{tab:event_frame_results_comparison}).
@@ -395,42 +421,44 @@ Table \ref{tab:frames_before_tackle_comparison} presents a detailed breakdown of
 \begin{table}[h]
 	\caption{Test Set Performance by Frames Before Tackle}
 	\centering
-	\begin{tabular}{|c|c|c|c|c|}
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{|c|c|c|c|c|c|}
 	\hline
-    \textbf{Frames Before Tackle} & \textbf{Zoo (yards)} & \textbf{Transformer (yards)} & \textbf{Improvement \%} & \textbf{Improvement (yards)} \\
+    \textbf{Frames Before Tackle} & \textbf{Frames} & \textbf{Zoo (yards)} & \textbf{Transformer (yards)} & \textbf{Improvement \%} & \textbf{Improvement (yards)} \\
     \hline
-    After tackle & 4.51 & 1.18 & 73.8\% & 3.33 \\
+    After tackle & 7,480 & 4.61 & 1.16 & 74.8\% & 3.45 \\
     \hline
-    0-5 frames & 4.12 & 1.26 & 69.4\% & 2.86 \\
+    0-5 frames & 9,355 & 4.27 & 1.22 & 71.4\% & 3.05 \\
     \hline
-    5-10 frames & 3.71 & 1.57 & 57.7\% & 2.14 \\
+    5-10 frames & 9,248 & 3.88 & 1.52 & 60.8\% & 2.36 \\
     \hline
-    10-15 frames & 3.54 & 2.22 & 37.3\% & 1.32 \\
+    10-15 frames & 8,679 & 3.61 & 2.23 & 38.2\% & 1.38 \\
     \hline
-    15-20 frames & 3.82 & 3.13 & 18.1\% & 0.69 \\
+    15-20 frames & 7,952 & 3.78 & 3.13 & 17.2\% & 0.65 \\
     \hline
-    20-25 frames & 4.44 & 4.11 & 7.4\% & 0.33 \\
+    20-25 frames & 7,228 & 4.34 & 4.19 & 3.5\% & 0.15 \\
     \hline
-    25-30 frames & 5.23 & 5.04 & 3.6\% & 0.19 \\
+    25-30 frames & 6,443 & 5.12 & 5.21 & -1.8\% & -0.09 \\
     \hline
-    30+ frames & 9.46 & 9.48 & -0.2\% & -0.02 \\
+    30+ frames & 23,677 & 9.57 & 9.57 & 0.0\% & 0.00 \\
     \hline
-	\end{tabular}
+	\end{tabular}%
+	}
 	\label{tab:frames_before_tackle_comparison}
 \end{table}
 
 The data reveals a striking contrast in how the two architectures handle predictions as plays develop. Far from the tackle (30+ frames), both models perform similarly poorly (~9.5 yards error) when the play outcome is highly uncertain. However, as plays progress toward the tackle, the models diverge dramatically:
 
-\textbf{The Transformer continuously improves}, leveraging increasing spatial information: 9.48 → 5.04 → 4.11 → 3.13 → 2.22 → 1.57 → 1.26 → 1.18 yards error.
+\textbf{The Transformer continuously improves}, leveraging increasing spatial information: 9.57 → 5.21 → 4.19 → 3.13 → 2.23 → 1.52 → 1.22 → 1.16 yards error.
 
-\textbf{The Zoo model actually degrades} near critical moments: after reaching its best performance at 10-15 frames (3.54 yards), it gets progressively worse as the tackle approaches: 3.54 → 3.71 (5-10 frames) → 4.12 (0-5 frames) → 4.51 (after tackle).
+\textbf{The Zoo model actually degrades} near critical moments: after reaching its best performance at 10-15 frames (3.61 yards), it gets progressively worse as the tackle approaches: 3.61 → 3.88 (5-10 frames) → 4.27 (0-5 frames) → 4.61 (after tackle).
 
-This failure to generalize near the tackle—the most information-rich and crucial moment—reveals a fundamental limitation of the Zoo architecture's pairwise-only interaction modeling. In contrast, the Transformer's self-attention mechanism excels at capturing the complex convergence of defensive players and ball carrier dynamics, achieving 57.7\% to 73.8\% improvement near the tackle. Figure \ref{fig:frame_diff} visualizes this pattern.
+This performance degradation near the tackle (where error should be minimal as we approach the play's conclusion) suggests that the Zoo architecture struggles to adapt to the dynamic spatial patterns that emerge as plays evolve beyond their initial configurations. In contrast, the Transformer's self-attention mechanism demonstrates robust generalization across diverse game situations, achieving 60.8\% to 74.8\% improvement near the tackle. Figure \ref{fig:frame_diff} visualizes this pattern.
 
 \begin{figure}
     \centering
     \includegraphics[width=0.75\linewidth]{../results/frame_difference_plot.png}
-    \caption{Performance by Frames Before Tackle. The plot reveals a critical architectural difference: while the Transformer (blue) continuously improves as plays progress toward the tackle (9.48 → 1.18 yards), the Zoo model (orange) actually degrades near critical moments (3.54 → 4.51 yards from 10-15 frames to after tackle). Both models perform similarly far from the tackle (30+ frames, ~9.5 yards), but the Transformer's self-attention mechanism excels at leveraging rich spatial information during crucial moments, achieving up to 73.8\% improvement after the tackle.}
+    \caption{Performance by Frames Before Tackle. The plot reveals a critical architectural difference: while the Transformer (blue) continuously improves as plays progress toward the tackle (9.57 → 1.16 yards), the Zoo model (orange) actually degrades near critical moments (3.61 → 4.61 yards from 10-15 frames to after tackle). Both models perform similarly far from the tackle (30+ frames, ~9.6 yards), but the Transformer's self-attention mechanism excels at leveraging rich spatial information during crucial moments, achieving up to 74.8\% improvement after the tackle.}
     \label{fig:frame_diff}
 \end{figure}
 

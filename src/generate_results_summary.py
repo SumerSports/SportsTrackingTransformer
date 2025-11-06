@@ -1,8 +1,33 @@
 """
-Generate Results Summary
+Generate Results Summary and Analysis
 
-Processes model predictions and generates result summary for publication.
-Usage: uv run python src/generate_results_summary.py
+This module performs comprehensive analysis of trained model performance, generating
+publication-ready figures, tables, and metrics for comparing different architectures.
+
+Key Analyses:
+1. Overall Performance Comparison: Calculates Average Displacement Error (ADE) across
+   all data splits for each model architecture.
+
+2. Event-Type Breakdown: Analyzes model performance at different game moments
+   (snap, handoff, tackle, etc.) to understand where models excel or struggle.
+
+3. Temporal Analysis: Examines how prediction accuracy changes as plays progress,
+   measuring performance at different frames before the tackle event.
+
+4. Model Scaling Analysis: Compares all trained models across different configurations
+   to understand how each architecture responds to increased model capacity.
+
+5. Computational Efficiency: Calculates FLOPs for inference to compare computational
+   costs across different model sizes and architectures.
+
+Outputs:
+- results/results.csv: Comprehensive metrics table for all analyses
+- results/model_comparison.json: Details of all trained model configurations
+- results/frame_difference_plot.png: Temporal performance visualization
+- results/model_scaling_plot.png: Model capacity vs. performance comparison
+
+Usage:
+    uv run python src/generate_results_summary.py
 """
 
 import json
