@@ -59,78 +59,78 @@ stages:
       size: 18404106731
       nfiles: 6
   train_zoo_models:
-    cmd: uv run python src/train.py --model_type zoo --device 0
+    cmd: uv run python src/train.py --model_type zoo --device 0 --skip-existing
     deps:
     - path: data/datasets/zoo/
       hash: md5
-      md5: a4efb7436bae82d4254001e95406017b.dir
+      md5: 3eca75a7cb6ad04a998bfe41b4bcbca7.dir
       size: 11254026456
       nfiles: 3
     - path: src/datasets.py
       hash: md5
-      md5: 1cb7940a2d1f068b4c55f509df0cab56
-      size: 10137
+      md5: 78d17326fcc65ca912e4033ce2eca76c
+      size: 12428
     - path: src/models.py
       hash: md5
-      md5: 65080f99c68a2edc27bed0807900d426
-      size: 15310
+      md5: f13901ccf658c2686b486482f8c76b10
+      size: 14850
     - path: src/train.py
       hash: md5
-      md5: a7658a66133897070b512d6759e954f1
-      size: 12002
+      md5: 0e0d5550f2c17475ea3707b8fe5c2772
+      size: 12599
     outs:
     - path: models/zoo/
       hash: md5
-      md5: c5bd1f5b680dc8a08bb5414c8774f06d.dir
-      size: 1242287897
-      nfiles: 138
+      md5: a9d8934fe55f3aee21a62a2f1b433d9d.dir
+      size: 508918843
+      nfiles: 53
   train_transformer_models:
-    cmd: uv run python src/train.py --model_type transformer --device 0
+    cmd: uv run python src/train.py --model_type transformer --device 0 --skip-existing
     deps:
     - path: data/datasets/transformer
       hash: md5
-      md5: 4c507904f3b48d5d0c9703939f19ef3a.dir
+      md5: e98af61462b1cb9db8121d39019cabb2.dir
       size: 7150080275
       nfiles: 3
     - path: src/datasets.py
       hash: md5
-      md5: 1cb7940a2d1f068b4c55f509df0cab56
-      size: 10137
+      md5: 78d17326fcc65ca912e4033ce2eca76c
+      size: 12428
     - path: src/models.py
       hash: md5
-      md5: 65080f99c68a2edc27bed0807900d426
-      size: 15310
+      md5: f13901ccf658c2686b486482f8c76b10
+      size: 14850
     - path: src/train.py
       hash: md5
-      md5: a7658a66133897070b512d6759e954f1
-      size: 12002
+      md5: 0e0d5550f2c17475ea3707b8fe5c2772
+      size: 12599
     outs:
     - path: models/transformer/
       hash: md5
-      md5: a139961d47a1509c1dffb8fe3edb9d8e.dir
-      size: 1748856881
-      nfiles: 133
+      md5: 623269871625227e50144941aec266dc.dir
+      size: 968130989
+      nfiles: 51
   pick_best_models:
     cmd: uv run python src/pick_best_models.py
     deps:
     - path: models/transformer/
       hash: md5
-      md5: a139961d47a1509c1dffb8fe3edb9d8e.dir
-      size: 1748856881
-      nfiles: 133
+      md5: 623269871625227e50144941aec266dc.dir
+      size: 968130989
+      nfiles: 51
     - path: models/zoo/
       hash: md5
-      md5: c5bd1f5b680dc8a08bb5414c8774f06d.dir
-      size: 1242287897
-      nfiles: 138
+      md5: a9d8934fe55f3aee21a62a2f1b433d9d.dir
+      size: 508918843
+      nfiles: 53
     - path: src/datasets.py
       hash: md5
-      md5: 1cb7940a2d1f068b4c55f509df0cab56
-      size: 10137
+      md5: 78d17326fcc65ca912e4033ce2eca76c
+      size: 12428
     - path: src/models.py
       hash: md5
-      md5: 65080f99c68a2edc27bed0807900d426
-      size: 15310
+      md5: f13901ccf658c2686b486482f8c76b10
+      size: 14850
     - path: src/pick_best_models.py
       hash: md5
       md5: 526da8c378361aacac559759b01198f7
@@ -138,8 +138,8 @@ stages:
     outs:
     - path: models/best_models/
       hash: md5
-      md5: a33fb47fb8683ba1fd9fb5df5ddcd442.dir
-      size: 147202233
+      md5: 13bc0e7f8a38d88ee7198fa6ffa8b1da.dir
+      size: 143347889
       nfiles: 4
   generate_results:
     cmd: uv run python src/generate_results_summary.py
@@ -151,31 +151,27 @@ stages:
       nfiles: 6
     - path: models/best_models/
       hash: md5
-      md5: a33fb47fb8683ba1fd9fb5df5ddcd442.dir
-      size: 147202233
+      md5: 13bc0e7f8a38d88ee7198fa6ffa8b1da.dir
+      size: 143347889
       nfiles: 4
     - path: src/generate_results_summary.py
       hash: md5
-      md5: 64872e20de0850256536517bff4f0c8d
-      size: 16107
-    - path: src/metrics.py
-      hash: md5
-      md5: 19c250314b56f936653d87abe6db7564
-      size: 1712
+      md5: 56af7ed03c6b710b4e1d0482614e6581
+      size: 20453
     - path: src/models.py
       hash: md5
-      md5: 65080f99c68a2edc27bed0807900d426
-      size: 15310
+      md5: f13901ccf658c2686b486482f8c76b10
+      size: 14850
     outs:
     - path: results/frame_difference_plot.png
       hash: md5
-      md5: c0817f2cf5b67a215429653acc9ee07d
-      size: 239288
+      md5: be11963e5aff6f21df352cb509cb57ab
+      size: 230966
     - path: results/model_comparison.json
       hash: md5
-      md5: 72602994a46f386251f2ea2699c43965
-      size: 4440
+      md5: 8f22e860ebb4f797e9017f6bc35df503
+      size: 4255
     - path: results/results.csv
       hash: md5
-      md5: 92307a40cf396c68dcf99955b4f8c6a5
-      size: 1283
+      md5: 560a8d2d96a82d5a14856d867004db69
+      size: 1284

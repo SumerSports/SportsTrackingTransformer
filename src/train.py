@@ -215,9 +215,9 @@ def train_model(
         )
         curr_epoch = 0
 
-    # if skip_existing and epochs > patience, skip re-training
-    if skip_existing and curr_epoch >= patience:
-        print(f"Skipping training as {curr_epoch=} >= {patience=}")
+    # if skip_existing and checkpoint exists, skip re-training
+    if skip_existing and existing_ckpt is not None:
+        print(f"Skipping training as checkpoint exists: {existing_ckpt}")
         return lit_model
 
     # Load datasets

@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import seaborn as sns
-import torch
 from calflops import calculate_flops
 
 from models import LitModel
@@ -53,6 +52,7 @@ def calculate_ade(
 
     distances = np.sqrt((x_pred - x) ** 2 + (y_pred - y) ** 2)
     return float(np.mean(distances))
+
 
 RESULTS_DIR = Path("results")
 RESULTS_DIR.mkdir(exist_ok=True)
@@ -482,6 +482,56 @@ def compute_model_comparison() -> list[dict]:
     return results
 
 
+def generate_model_scaling_plot(model_comparison: list[dict]) -> None:
+    """
+    Generate model scaling plot showing Test ADE vs FLOPs.
+
+    This visualization supports the "Model Selection and Architectural Scaling"
+    section of the paper, demonstrating how Zoo and Transformer architectures
+    scale with computational budget.
+    """
+    print("\nGenerating model scaling plot...")
+
+    # Convert to DataFrame for easier manipulation
+    df = pl.DataFrame(model_comparison).to_pandas()
+
+    # Create single figure
+    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+
+    # Define colors and markers
+    colors = {"zoo": "#FF7F0E", "transformer": "#1F77B4"}
+    markers = {"zoo": "s", "transformer": "o"}
+
+    # Plot: Test ADE vs FLOPs
+    for model_type in ["zoo", "transformer"]:
+        data = df[df["model_type"] == model_type].sort_values("inference_flops")
+        ax.plot(
+            data["inference_flops"],
+            data["test_ade_yards"],
+            marker=markers[model_type],
+            markersize=8,
+            linewidth=2,
+            label=model_type.capitalize(),
+            color=colors[model_type],
+            alpha=0.8,
+        )
+
+    ax.set_xscale("log")
+    ax.set_xlabel("Inference FLOPs (log scale)", fontsize=12)
+    ax.set_ylabel("Test ADE (yards) - Lower is Better", fontsize=12)
+    ax.set_title("Model Scaling: Test ADE vs FLOPs", fontsize=14, fontweight="bold")
+    ax.legend(title="Architecture", fontsize=11, title_fontsize=12)
+    ax.grid(True, alpha=0.3, linestyle="--")
+
+    # Adjust layout and save
+    plt.tight_layout()
+    plot_path = RESULTS_DIR / "model_scaling_plot.png"
+    plt.savefig(plot_path, dpi=300, bbox_inches="tight")
+    plt.close()
+
+    print(f"  Saved: {plot_path}")
+
+
 def main():
     """Generate results summary."""
     print("=" * 60)
@@ -510,6 +560,9 @@ def main():
     with open(comparison_path, "w") as f:
         json.dump(model_comparison, f, indent=2)
     print(f"\n✓ Saved: {comparison_path} ({len(model_comparison)} models)")
+
+    # Generate model scaling plot
+    generate_model_scaling_plot(model_comparison)
 
     print("\n" + "=" * 60)
     print("COMPLETE")
