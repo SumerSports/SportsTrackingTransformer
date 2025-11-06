@@ -2,20 +2,20 @@ schema: '2.0'
 stages:
   get_bdb_2024_data:
     cmd: wget -q 
-      https://github.com/SumerSports/SportsTrackingTransformer/releases/download/data-v1.0/nfl-big-data-bowl-2024.zip
-      -O data/nfl-big-data-bowl-2024.zip
+      https://github.com/SumerSports/SportsTrackingTransformer/releases/download/data-v1.0/nfl-big-data-bowl-2024.tar.zst
+      -O data/nfl-big-data-bowl-2024.tar.zst
     outs:
-    - path: data/nfl-big-data-bowl-2024.zip
+    - path: data/nfl-big-data-bowl-2024.tar.zst
       hash: md5
-      md5: 3cdf48297d525758ea582060821dd0ab
-      size: 293090157
+      md5: 3905e80fbf33b4c41b6cf1d2b75fda54
+      size: 225322310
   unzip_bdb_2024_data:
-    cmd: unzip -j data/nfl-big-data-bowl-2024.zip '2024/*' -d data/bdb_2024/
+    cmd: uv run zstd -d data/nfl-big-data-bowl-2024.tar.zst -c | tar -xf - -C data
     deps:
-    - path: data/nfl-big-data-bowl-2024.zip
+    - path: data/nfl-big-data-bowl-2024.tar.zst
       hash: md5
-      md5: 3cdf48297d525758ea582060821dd0ab
-      size: 293090157
+      md5: 3905e80fbf33b4c41b6cf1d2b75fda54
+      size: 225322310
     outs:
     - path: data/bdb_2024
       hash: md5

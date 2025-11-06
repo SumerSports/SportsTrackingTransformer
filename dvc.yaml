@@ -1,14 +1,14 @@
 stages:
   get_bdb_2024_data:
     # Download from GitHub releases since Kaggle dataset was removed by host
-    cmd: wget -q https://github.com/SumerSports/SportsTrackingTransformer/releases/download/data-v1.0/nfl-big-data-bowl-2024.zip -O data/nfl-big-data-bowl-2024.zip
+    cmd: wget -q https://github.com/SumerSports/SportsTrackingTransformer/releases/download/data-v1.0/nfl-big-data-bowl-2024.tar.zst -O data/nfl-big-data-bowl-2024.tar.zst
     outs:
-    - data/nfl-big-data-bowl-2024.zip
+    - data/nfl-big-data-bowl-2024.tar.zst
 
   unzip_bdb_2024_data:
-    cmd: unzip -j data/nfl-big-data-bowl-2024.zip '2024/*' -d data/bdb_2024/
+    cmd: uv run zstd -d data/nfl-big-data-bowl-2024.tar.zst -c | tar -xf - -C data
     deps:
-    - data/nfl-big-data-bowl-2024.zip
+    - data/nfl-big-data-bowl-2024.tar.zst
     outs:
     - data/bdb_2024
 
