@@ -43,20 +43,6 @@ This work introduces a transformative approach by applying Transformer architect
 - Empirical evidence showing superior generalization compared to existing methods
 - Open-source implementation for reproducibility and further research
 
-## Pre-trained Models
-
-Pre-trained models are available in [GitHub Releases](https://github.com/SumerSports/SportsTrackingTransformer/releases/tag/models-v1.0) (135MB compressed):
-- Zoo Architecture best model (M128_L2)
-- Transformer best model (M512_L2)
-- Test set predictions for both models
-
-Download and extract to skip training:
-```bash
-wget https://github.com/SumerSports/SportsTrackingTransformer/releases/download/models-v1.0/best_models.tar.gz
-tar -xzf best_models.tar.gz
-rm best_models.tar.gz
-```
-
 ## Paper and Workshop Materials
 
 This repository accompanies our research paper:
@@ -274,7 +260,32 @@ After cloning the repo, perform these steps:
 
 ## Reproducing the Full Pipeline
 
-The full pipeline is managed by DVC. To reproduce from scratch:
+The full pipeline is managed by DVC. You have two options:
+
+### Option 1: Skip Training (Download Pre-trained Models)
+
+To skip the ~8-12 hour training process, download all 24 pre-trained models from [GitHub Releases](https://github.com/SumerSports/SportsTrackingTransformer/releases/tag/models-v1.0) (1.45GB):
+
+```bash
+wget https://github.com/SumerSports/SportsTrackingTransformer/releases/download/models-v1.0/models.tar.zst
+uv run zstd -d models.tar.zst -c | tar -xf - -C models/
+rm models.tar.zst
+```
+
+This includes:
+- 12 Transformer models (M32/M128/M512 × L1/L2/L4/L8)
+- 12 Zoo models (M32/M128/M512 × L1/L2/L4/L8)
+- Checkpoints, predictions, hyperparameters, and TensorBoard logs for each configuration
+
+Then run the pipeline, which will skip training stages via `--skip-existing`:
+
+```bash
+uv run dvc repro
+```
+
+### Option 2: Train from Scratch
+
+To reproduce everything from scratch (including model training):
 
 ```bash
 # Run full pipeline (downloads data, trains models, generates results)
